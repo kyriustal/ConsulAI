@@ -811,6 +811,9 @@ export default function App() {
     return saved === "dark"; // Default is false (light) if not set
   });
 
+  // Mobile sidebar drawer state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     // Login page always in dark mode — no theme switching for unauthenticated state
     if (!currentUser) {
@@ -2605,7 +2608,21 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
   };
 
   // List of bootstrap owner emails (saved and checked securely in the database/backend)
-  const BOOTSTRAP_OWNERS: string[] = [];
+  // ── ACCESS CONTROL ──────────────────────────────────────────────────────
+  // Only these 7 emails may create accounts or use external (Google/SSO) login
+  // directly. All other users must be added by one of these owners via the
+  // Team Management panel.
+  const ALLOWED_OWNERS: string[] = [
+    "natalj824@gmail.com",
+    "onvisacompany@gmail.com",
+    "cirilnatal@gmail.com",
+    "kyriusnatal@gmail.com",
+    "cyrusnatalj@gmail.com",
+    "josecirilosnatal@gmail.com",
+    "cyroficial@gmail.com"
+  ];
+  // Keep BOOTSTRAP_OWNERS as an alias so existing references continue to work
+  const BOOTSTRAP_OWNERS: string[] = ALLOWED_OWNERS;
 
   // Password Recovery Handlers (Safe & Secure)
   const handleStartRecovery = async (e: React.FormEvent) => {
@@ -2652,7 +2669,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
     }
   };
 
-  // Self-registration for Consular Staff or Owner
+  // Self-registration — restricted to ALLOWED_OWNERS only
   const handleSelfRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
@@ -2662,6 +2679,13 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
     const emailNorm = registerEmail.trim().toLowerCase();
     if (!emailNorm || registerPassword.length < 4) {
       setLoginError("Por favor preencha todos os campos. A senha deve possuir 4+ caracteres.");
+      setIsLoggingIn(false);
+      return;
+    }
+
+    // ── BARRIER: Only authorised owner emails may register ──
+    if (!ALLOWED_OWNERS.includes(emailNorm)) {
+      setLoginError("Acesso Restrito: Este endereço de e-mail não está autorizado a criar uma conta nesta plataforma. Contacte o administrador.");
       setIsLoggingIn(false);
       return;
     }
@@ -2810,10 +2834,16 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
       
       const user = await dbService.getUser(emailNorm);
       if (user) {
+        // Existing registered user — allow login
         role = user.role as any;
       } else {
-        role = BOOTSTRAP_OWNERS.includes(emailNorm) ? "proprietario" : "agente";
-        
+        // No record found — only ALLOWED_OWNERS may auto-provision via external auth
+        if (!ALLOWED_OWNERS.includes(emailNorm)) {
+          setLoginError("Acesso Negado: Este e-mail não está registado nem autorizado nesta plataforma. Contacte o administrador.");
+          setIsLoggingIn(false);
+          return;
+        }
+        role = "proprietario";
         await dbService.saveUser(emailNorm, {
           uid: "ext_" + Math.floor(10000 + Math.random() * 90000),
           email: emailNorm,
@@ -2851,9 +2881,16 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         
         const user = await dbService.getUser(emailNorm);
         if (user) {
+          // Registered user — allow login with their stored role
           role = user.role as any;
         } else {
-          role = BOOTSTRAP_OWNERS.includes(emailNorm) ? "proprietario" : "agente";
+          // Unknown email — block unless it is an authorised owner
+          if (!ALLOWED_OWNERS.includes(emailNorm)) {
+            setLoginError("Acesso Negado: A conta Google utilizada não está registada nem autorizada nesta plataforma.");
+            setIsLoggingIn(false);
+            return;
+          }
+          role = "proprietario";
           await dbService.saveUser(emailNorm, {
             uid: res.user.uid,
             email: emailNorm,
@@ -3519,173 +3556,299 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         </div>
       ) : (
         <>
-          {/* Upper Navigation Bar */}
+          {/* ═══════════════ HEADER (Responsive) ═══════════════ */}
       <header className="border-b border-[#1e293b] bg-[#0c1220]/90 backdrop-blur sticky top-0 z-40 px-3 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          
-          <div className="flex items-center space-x-3 w-full md:w-auto">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+
+          {/* Logo + Brand */}
+          <div className="flex items-center space-x-3">
+            {/* Hamburger — mobile only */}
+            <button
+              id="mobile-menu-btn"
+              className="md:hidden p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Abrir menu de navegação"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
             <div className="bg-gradient-to-tr from-sky-400 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/10">
               <Award className="h-5 w-5 sm:h-6 sm:w-6" id="logo-icon" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-display font-bold text-base sm:text-xl text-white tracking-tight">ConsulAI Engine</span>
-                <span className="bg-sky-500/10 text-sky-400 text-[9px] sm:text-[10px] uppercase tracking-widest font-mono font-medium px-2 py-0.5 rounded border border-sky-500/20">
+                <span className="bg-sky-500/10 text-sky-400 text-[9px] sm:text-[10px] uppercase tracking-widest font-mono font-medium px-2 py-0.5 rounded border border-sky-500/20 hidden sm:inline">
                   V1.0 Pro
                 </span>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-sans">Simulação Migratória & Auditoria Antifraude Consular</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-sans hidden sm:block">Simulação Migratória & Auditoria Antifraude Consular</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 w-full md:w-auto border-t border-[#1e293b] md:border-0 pt-3 md:pt-0">
-            {/* Nav pills */}
-            <nav className="flex flex-wrap items-center gap-1">
+          {/* Desktop nav — hidden on mobile */}
+          <div className="hidden md:flex items-center gap-3">
+            <nav className="flex items-center gap-1">
               <button
                 id="tab-simulator-btn"
                 onClick={() => setActiveTab("simulator")}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                   activeTab === "simulator"
-                     ? "bg-sky-100 text-sky-800"
-                     : "text-slate-800 hover:bg-sky-500/10 hover:text-sky-700"
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                   activeTab === "simulator" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                 }`}
               >
-                <Activity className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Painel de Avaliação</span>
-                <span className="sm:hidden">Avaliação</span>
+                <Activity className="w-3.5 h-3.5" /><span>Painel de Avaliação</span>
               </button>
-
               <button
                 id="tab-rules-btn"
                 onClick={() => setActiveTab("rules")}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                   activeTab === "rules"
-                     ? "bg-sky-100 text-sky-800"
-                     : "text-slate-800 hover:bg-sky-500/10 hover:text-sky-700"
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                   activeTab === "rules" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Base Legal Jurídica</span>
-                <span className="sm:hidden">Mural Legal</span>
+                <BookOpen className="w-3.5 h-3.5" /><span>Base Legal Jurídica</span>
               </button>
-
               <button
                 id="tab-history-btn"
                 onClick={() => setActiveTab("history")}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                   activeTab === "history"
-                     ? "bg-sky-100 text-sky-800"
-                     : "text-slate-800 hover:bg-sky-500/10 hover:text-sky-700"
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                   activeTab === "history" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                 }`}
               >
-                <History className="w-3.5 h-3.5" />
-                <span>Histórico ({historyTrail.length})</span>
+                <History className="w-3.5 h-3.5" /><span>Histórico ({historyTrail.length})</span>
               </button>
-
               {currentUser && (
                 <button
                   id="tab-profile-btn"
                   onClick={() => setActiveTab("profile")}
-                  className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                    activeTab === "profile"
-                      ? "bg-sky-100 text-sky-800"
-                      : "text-slate-800 hover:bg-sky-500/10 hover:text-sky-700"
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                    activeTab === "profile" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                   }`}
                 >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Área de Usuário</span>
+                  <User className="w-3.5 h-3.5" /><span>Área de Usuário</span>
                 </button>
               )}
-
               {currentUser && (currentUser.role === "proprietario" || currentUser.role === "adm") && (
                 <button
                   id="tab-team-btn"
-                  onClick={() => {
-                    setActiveTab("team");
-                  }}
-                  className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                    activeTab === "team"
-                      ? "bg-sky-100 text-sky-800"
-                      : "text-slate-800 hover:bg-sky-500/10 hover:text-sky-700"
+                  onClick={() => setActiveTab("team")}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                    activeTab === "team" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                   }`}
                 >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Equipa ({teamMembers.length})</span>
+                  <Users className="w-3.5 h-3.5" /><span>Equipa ({teamMembers.length})</span>
                 </button>
               )}
-
               <button
                 id="tab-denied-visas-btn"
                 onClick={() => setActiveTab("denied_visas")}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] sm:text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 border-transparent ${
-                   activeTab === "denied_visas"
-                     ? "bg-rose-500/15 border border-rose-500/30 text-rose-500"
-                     : "text-slate-800 hover:bg-rose-500/10 hover:text-rose-500"
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold font-display transition-all duration-150 flex items-center space-x-1.5 ${
+                   activeTab === "denied_visas" ? "bg-rose-500/15 border border-rose-500/30 text-rose-500" : "text-slate-300 hover:bg-rose-500/10 hover:text-rose-400"
                 }`}
               >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Vistos Negados</span>
-              </button>
-
-              <button
-                id="theme-toggle-btn"
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="p-1.5 rounded-md transition-all duration-150 flex items-center justify-center border border-sky-500/25 bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 cursor-pointer"
-                title={isDarkMode ? "Modo Claro" : "Modo Noturno"}
-              >
-                {isDarkMode ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-sky-500" />
-                )}
+                <ShieldAlert className="w-3.5 h-3.5" /><span>Vistos Negados</span>
               </button>
             </nav>
 
-            {/* User Session Badges */}
-            {currentUser && (
-              <div className="flex items-center space-x-2 text-right border-l border-[#1e293b] pl-3">
-                <div className="text-right">
-                  <span className="block text-[10px] text-slate-300 font-mono font-semibold max-w-[85px] sm:max-w-[130px] truncate" title={currentUser.email}>
-                    {currentUser.email.split("@")[0]}
-                  </span>
-                  <span className={`inline-block text-[8px] uppercase font-mono px-1 rounded border font-bold mt-0.5 ${
-                    currentUser.role === "proprietario" ? "bg-red-500/10 text-rose-400 border-rose-500/20" :
-                    currentUser.role === "adm" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                    currentUser.role === "agente" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" :
-                    "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  }`}>
-                    {currentUser.role}
-                  </span>
+            {/* Theme + User badges — desktop */}
+            <div className="flex items-center gap-2 border-l border-[#1e293b] pl-3">
+              <button
+                id="theme-toggle-btn"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-1.5 rounded-md border border-sky-500/25 bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 cursor-pointer transition-all"
+                title={isDarkMode ? "Modo Claro" : "Modo Noturno"}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-500" />}
+              </button>
+              {currentUser && (
+                <div className="flex items-center space-x-2">
+                  <div className="text-right">
+                    <span className="block text-[10px] text-slate-300 font-mono font-semibold max-w-[130px] truncate" title={currentUser.email}>
+                      {currentUser.email.split("@")[0]}
+                    </span>
+                    <span className={`inline-block text-[8px] uppercase font-mono px-1 rounded border font-bold mt-0.5 ${
+                      currentUser.role === "proprietario" ? "bg-red-500/10 text-rose-400 border-rose-500/20" :
+                      currentUser.role === "adm" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                      currentUser.role === "agente" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" :
+                      "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    }`}>
+                      {currentUser.role}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setPasswordModalError(null); setPasswordModalSuccess(null); setUserOldPassword(""); setUserNewPassword(""); setUserConfirmPassword(""); setIsEditingPasswordModalOpen(true); }}
+                    className="p-1 px-1.5 rounded bg-[#1f2937]/60 hover:bg-sky-950/40 border border-[#2d3748] hover:border-sky-500/35 text-slate-400 hover:text-sky-400 transition-all cursor-pointer"
+                    title="Alterar Palavra-passe"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="p-1 px-1.5 rounded bg-[#1f2937]/60 hover:bg-red-950/40 border border-[#2d3748] hover:border-red-500/35 text-slate-400 hover:text-red-400 transition-all cursor-pointer"
+                    title="Terminar Sessão"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPasswordModalError(null);
-                    setPasswordModalSuccess(null);
-                    setUserOldPassword("");
-                    setUserNewPassword("");
-                    setUserConfirmPassword("");
-                    setIsEditingPasswordModalOpen(true);
-                  }}
-                  className="p-1 px-1.5 rounded bg-[#1f2937]/60 hover:bg-sky-950/40 border border-[#2d3748] hover:border-sky-500/35 text-slate-400 hover:text-sky-450 transition-all cursor-pointer"
-                  title="Alterar Palavra-passe"
-                >
-                  <Key className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-1 px-1.5 rounded bg-[#1f2937]/60 hover:bg-red-950/40 border border-[#2d3748] hover:border-red-500/35 text-slate-400 hover:text-red-400 transition-all cursor-pointer"
-                  title="Terminar Sessão"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
+          {/* Mobile right side: theme toggle always visible */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              id="theme-toggle-mobile-btn"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-1.5 rounded-md border border-sky-500/25 bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 cursor-pointer transition-all"
+              title={isDarkMode ? "Modo Claro" : "Modo Noturno"}
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-500" />}
+            </button>
+            {currentUser && (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-1.5 rounded bg-[#1f2937]/60 hover:bg-red-950/40 border border-[#2d3748] hover:border-red-500/35 text-slate-400 hover:text-red-400 transition-all cursor-pointer"
+                title="Terminar Sessão"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* ═══════════════ LEFT SIDEBAR DRAWER (Mobile) ═══════════════ */}
+      {/* Backdrop overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Drawer panel */}
+      <aside
+        id="mobile-sidebar"
+        className={`fixed top-0 left-0 h-full w-72 bg-[#0c1220] border-r border-[#1e293b] z-[60] md:hidden flex flex-col shadow-2xl shadow-black/50 transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#1e293b]">
+          <div className="flex items-center space-x-2">
+            <div className="bg-gradient-to-tr from-sky-400 to-indigo-600 p-1.5 rounded-lg text-white">
+              <Award className="h-4 w-4" />
+            </div>
+            <span className="font-display font-bold text-white text-sm tracking-tight">ConsulAI Engine</span>
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+            aria-label="Fechar menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* User info strip */}
+        {currentUser && (
+          <div className="px-4 py-3 border-b border-[#1e293b] bg-[#111827]/60">
+            <p className="text-xs text-slate-300 font-mono font-semibold truncate" title={currentUser.email}>
+              {currentUser.email}
+            </p>
+            <span className={`inline-block text-[9px] uppercase font-mono px-1.5 py-0.5 rounded border font-bold mt-1 ${
+              currentUser.role === "proprietario" ? "bg-red-500/10 text-rose-400 border-rose-500/20" :
+              currentUser.role === "adm" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+              currentUser.role === "agente" ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" :
+              "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+            }`}>
+              {currentUser.role}
+            </span>
+          </div>
+        )}
+
+        {/* Nav links */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {([
+            { id: "simulator", icon: <Activity className="w-4 h-4" />, label: "Painel de Avaliação" },
+            { id: "rules",     icon: <BookOpen className="w-4 h-4" />, label: "Base Legal Jurídica" },
+            { id: "history",   icon: <History className="w-4 h-4" />,  label: `Histórico (${historyTrail.length})` },
+          ] as { id: typeof activeTab; icon: React.ReactNode; label: string }[]).map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold font-display transition-all duration-150 ${
+                activeTab === item.id
+                  ? "bg-sky-500/15 text-sky-400 border border-sky-500/20"
+                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {item.icon}<span>{item.label}</span>
+            </button>
+          ))}
+
+          {currentUser && (
+            <button
+              onClick={() => { setActiveTab("profile"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold font-display transition-all duration-150 ${
+                activeTab === "profile" ? "bg-sky-500/15 text-sky-400 border border-sky-500/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <User className="w-4 h-4" /><span>Área de Usuário</span>
+            </button>
+          )}
+
+          {currentUser && (currentUser.role === "proprietario" || currentUser.role === "adm") && (
+            <button
+              onClick={() => { setActiveTab("team"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold font-display transition-all duration-150 ${
+                activeTab === "team" ? "bg-sky-500/15 text-sky-400 border border-sky-500/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <Users className="w-4 h-4" /><span>Equipa ({teamMembers.length})</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => { setActiveTab("denied_visas"); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold font-display transition-all duration-150 ${
+              activeTab === "denied_visas"
+                ? "bg-rose-500/15 text-rose-400 border border-rose-500/25"
+                : "text-slate-300 hover:bg-rose-500/10 hover:text-rose-400"
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" /><span>Vistos Negados</span>
+          </button>
+        </nav>
+
+        {/* Drawer footer actions */}
+        <div className="px-3 py-4 border-t border-[#1e293b] space-y-2">
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => { setPasswordModalError(null); setPasswordModalSuccess(null); setUserOldPassword(""); setUserNewPassword(""); setUserConfirmPassword(""); setIsEditingPasswordModalOpen(true); setIsMobileMenuOpen(false); }}
+              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 transition-all font-semibold"
+            >
+              <Key className="w-4 h-4" /><span>Alterar Palavra-passe</span>
+            </button>
+          )}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:text-red-400 hover:bg-red-500/10 transition-all font-semibold"
+            >
+              <LogOut className="w-4 h-4" /><span>Terminar Sessão</span>
+            </button>
+          )}
+          <p className="text-[9px] text-slate-600 font-mono text-center pt-1">ConsulAI Core • Cloud Secure Gate</p>
+        </div>
+      </aside>
 
       {/* Main Container Area */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
