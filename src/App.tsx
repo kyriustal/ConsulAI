@@ -26,7 +26,6 @@ import {
   Eye,
   Menu,
   Check,
-  Award,
   Users,
   Lock,
   Trash2,
@@ -3266,9 +3265,11 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
           <div className="w-full max-w-md bg-[#0a1120] border border-[#1e293b] rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10 animate-fade-in">
             
             <div className="text-center space-y-2">
-              <div className="inline-flex bg-gradient-to-tr from-sky-450 to-indigo-600 p-3 rounded-2xl text-white shadow-xl shadow-sky-500/15 mb-2">
-                <Award className="h-8 w-8 text-white" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-14 h-14 rounded-2xl shadow-xl shadow-sky-500/15 mb-2 mx-auto block object-cover" 
+              />
               <h1 className="font-display font-bold text-2xl text-white tracking-tight">ConsulAI Portal</h1>
               <p className="text-xs text-slate-400">Sistema Consular de Riscos • ON-VISA CRM V1.0 Pro</p>
             </div>
@@ -3582,9 +3583,12 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="bg-gradient-to-tr from-sky-400 to-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-sky-500/10">
-              <Award className="h-5 w-5 sm:h-6 sm:w-6" id="logo-icon" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg shadow-lg shadow-sky-500/10 object-cover" 
+              id="logo-icon" 
+            />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-display font-bold text-base sm:text-xl text-white tracking-tight">ConsulAI Engine</span>
@@ -3749,9 +3753,11 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         {/* Drawer header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-[#1e293b]">
           <div className="flex items-center space-x-2">
-            <div className="bg-gradient-to-tr from-sky-400 to-indigo-600 p-1.5 rounded-lg text-white">
-              <Award className="h-4 w-4" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-7 h-7 rounded-lg object-cover" 
+            />
             <span className="font-display font-bold text-white text-sm tracking-tight">ConsulAI Engine</span>
           </div>
           <button
