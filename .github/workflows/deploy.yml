@@ -1,0 +1,52 @@
+name: ConsulAI CI Deploy to Hostinger
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci || npm install
+
+      - name: 🛠️ Build fullstack application (Vite Client + Esbuild Server)
+        run: npm run build
+        env:
+          NODE_ENV: production
+          GEMINI_API_KEY: "CI_BUILD_PLACEHOLDER"
+
+      - name: 📁 Prepare deployment package
+        run: |
+          mkdir deploy_dist
+          cp -r dist deploy_dist/
+          cp package.json deploy_dist/
+          cp package-lock.json deploy_dist/
+          if [ -f ".env.example" ]; then
+            cp .env.example deploy_dist/
+          fi
+          echo "==== Prepared Files ===="
+          ls -la deploy_dist/
+
+      - name: 📂 Sync files to Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy_dist/
+          # Change this to public_html/ or subfolder if your Node.js application points there
+          server-dir: ./
+          dangerous-clean-slate: false

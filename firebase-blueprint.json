@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "CaseHistoryEntry": {
+      "title": "CaseHistoryEntry",
+      "description": "Consular simulation case history registration",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the case"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "applicantName": {
+          "type": "string",
+          "description": "Full name of the visa applicant"
+        },
+        "country": {
+          "type": "string",
+          "description": "Target jurisdiction country code"
+        },
+        "decision": {
+          "type": "string",
+          "description": "Final recommendation of the official"
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Calculated score of immigration / fraud risk"
+        },
+        "result2": {
+          "type": "object",
+          "description": "Detailed evaluation result payload"
+        }
+      },
+      "required": ["id", "createdAt", "applicantName", "country", "decision", "riskScore"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A team member or primary owner in the workspace",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID or local generated key"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user"
+        },
+        "password": {
+          "type": "string",
+          "description": "Secret password of the user for sign-in"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["proprietario", "adm", "agente", "analista"],
+          "description": "Responsibility role in the workspace"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of user registration"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Email of the user who registered this member"
+        }
+      },
+      "required": ["email", "password", "role"]
+    }
+  },
+  "firestore": {
+    "/cases/{caseId}": {
+      "schema": "CaseHistoryEntry",
+      "description": "Simulated cases shared among the team members"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Identity and access level of database-synced team members"
+    }
+  }
+}

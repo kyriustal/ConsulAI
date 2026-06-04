@@ -1,0 +1,335 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Base custom styling for a sleek government-CRM digital look */
+body {
+  background: radial-gradient(circle at top, #0c1220 0%, #070b13 100%) no-repeat fixed;
+  background-color: #070b13;
+  color: #f8fafc;
+  font-family: var(--font-sans);
+}
+
+.text-white-force {
+  color: #ffffff !important;
+}
+
+/* Markdown parsing custom typography styles to render Gemini output elegantly */
+.markdown-body h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: #38bdf8 !important; /* Professional light sky blue for dark mode */
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.15rem;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  padding-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.light .markdown-body h3 {
+  color: #0284c7 !important; /* Professional dark sky blue for light mode */
+  border-bottom: 1px solid rgba(2, 132, 199, 0.2);
+}
+
+.markdown-body p {
+  color: #e2e8f0 !important; /* Light slate for dark mode */
+  line-height: 1.625;
+  margin-bottom: 0.75rem;
+  font-size: 0.925rem;
+}
+
+.light .markdown-body p {
+  color: #334155 !important; /* Dark slate 700 for light mode */
+}
+
+.markdown-body ul {
+  list-style-type: square;
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body li {
+  color: #e2e8f0 !important;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.light .markdown-body li {
+  color: #334155 !important;
+}
+
+.markdown-body strong {
+  color: #ffffff !important; /* White in dark mode */
+  font-weight: 600;
+}
+
+.light .markdown-body strong {
+  color: #0f172a !important; /* Slate 900 in light mode */
+}
+
+/* --- WHITE SILVER (BRANCO PRATA) THEMATIC OVERRIDES --- */
+
+.light body {
+  background: radial-gradient(circle at top, #fafafa 0%, #e2e8f0 100%) no-repeat fixed !important;
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Header Override */
+.light header {
+  background: linear-gradient(to bottom, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Override background colors of cards & panels for soft light surfaces */
+.light .bg-\[\#0a1120\], .light .bg-\[\#0f172a\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.03) !important;
+}
+
+.light .bg-\[\#111827\], .light .bg-\[\#0c1220\]\/90 {
+  background-color: #f8fafc !important; /* Silver gray brand highlight */
+  border-color: #e2e8f0 !important;
+}
+
+.light .bg-\[\#111928\], .light .bg-\[\#0d1525\], .light .bg-\[\#0d121f\], .light .bg-\[\#111827\] select, .light .bg-\[\#111827\] input {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Subtle highlights & details container styles */
+.light .bg-\[\#1f2937\]\/45, .light .bg-\[\#1f2937\]\/35, .light .bg-\[\#1f2937\]\/30, .light .bg-\[\#1e293b\]\/20, .light .bg-\[\#131f33\], .light .bg-\[\#101b2d\], .light .bg-\[\#172554\]\/25 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light .bg-\[\#0b0f19\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.light .bg-\[\#080d1a\], .light footer {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Secondary Button Reset */
+.light .bg-\[\#121c30\] {
+  background-color: #ebd5e100 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+.light .bg-\[\#121c30\]:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Standardize Borders to Elegant Silver */
+.light .border-\[\#1e293b\], .light .border-\[\#1f2937\], .light .border-\[\#223049\], .light .border-\[\#2d3748\], .light .border-\[\#374151\], .light .border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Base text color mappings for high legibility vs light gray/white background */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: #0f172a !important;
+}
+
+/* Selectively apply dark slate/blue ink to text classes, keeping color highlights */
+.light .text-white:not(button *, button, .bg-sky-500 *, .bg-emerald-500 *, .bg-emerald-600 *, .bg-rose-500 *, .bg-red-500 *, .bg-amber-500 *, .bg-indigo-600 *, [class*="bg-sky-"], [class*="bg-emerald-"], [class*="bg-red-"], [class*="bg-indigo-"], [class*="bg-amber-"]),
+.light .text-slate-100:not(button *, button, [class*="bg-"]),
+.light .text-slate-200:not(button *, button, [class*="bg-"]),
+.light .text-slate-300:not(button *, button, [class*="bg-"]) {
+  color: #0f172a !important;
+}
+
+.light .text-slate-400:not(button *, button, [class*="bg-"]),
+.light .text-slate-450:not(button *, button, [class*="bg-"]),
+.light .text-slate-500:not(button *, button, [class*="bg-"]),
+.light .text-slate-600:not(button *, button, [class*="bg-"]),
+.light .text-slate-350:not(button *, button, [class*="bg-"]) {
+  color: #0f172a !important; /* Preto escuro #0f172a */
+}
+
+/* Ensure form indicators have precise input text visibility */
+.light input, .light select, .light textarea {
+  color: #0f172a !important;
+}
+.light input::placeholder, .light select::placeholder, .light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Custom scrollbar to keep layout clean */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #070b13;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* --- COSMIC DARK THEMATIC OVERRIDES FOR HIGH-CONTRAST --- */
+
+/* High contrast background overrides for all sessions and subcomponents in dark mode */
+.dark body {
+  background: radial-gradient(circle at top, #0c1220 0%, #070b13 100%) no-repeat fixed !important;
+  background-color: #070b13 !important;
+  color: #f8fafc !important;
+}
+
+/* Dark theme header overrides */
+.dark header {
+  background-color: #0c1220 !important;
+  background: #0c1220 !important;
+  border-color: #1e293b !important;
+}
+
+/* Forces all card panels, main form sessions, and white boxes to dark backgrounds */
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-200,
+.dark .bg-gray-50,
+.dark .bg-gray-100,
+.dark .bg-sky-50,
+.dark .bg-emerald-50,
+.dark .bg-cyan-50,
+.dark .bg-slate-50\/10,
+.dark .bg-slate-100\/10,
+.dark .bg-slate-200\/20,
+.dark .bg-\[\#1f2937\]\/45,
+.dark .bg-\[\#1f2937\]\/35,
+.dark .bg-\[\#1f2937\]\/30,
+.dark .bg-\[\#1e293b\]\/20,
+.dark .bg-\[\#131f33\],
+.dark .bg-\[\#101b2d\],
+.dark .bg-\[\#172554\]\/25,
+.dark .bg-\[\#0b0f19\],
+.dark .bg-\[\#080d1a\],
+.dark .bg-slate-100 {
+  background-color: #0c1220 !important;
+  border-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+/* Forms & inputs inside dark mode sessions */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #070b13 !important;
+  border-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.dark input::placeholder,
+.dark select::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Standarize borders */
+.dark .border-slate-300,
+.dark .border-slate-350,
+.dark .border-slate-200,
+.dark .border-white {
+  border-color: #1e293b !important;
+}
+
+/* Crucial: highlight text layers in dark mode menu and general components */
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-slate-900,
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-black,
+.dark .text-sky-850,
+.dark .text-sky-800,
+.dark .text-emerald-800,
+.dark .text-cyan-800,
+.dark .text-slate-950,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #ffffff !important;
+}
+
+/* Ensure secondary buttons have legible style in dark mode */
+.dark .bg-\[\#121c30\] {
+  background-color: rgba(56, 189, 248, 0.05) !important;
+  border-color: #1e293b !important;
+  color: #38bdf8 !important;
+}
+
+.dark .bg-\[\#121c30\]:hover {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  color: #ffffff !important;
+}
+
+/* Active and hover nav menu items inside dark mode header */
+.dark nav button {
+  color: #e2e8f0 !important;
+}
+
+.dark nav button:hover {
+  background-color: rgba(56, 189, 248, 0.1) !important;
+  color: #38bdf8 !important;
+}
+
+.dark nav button.bg-sky-100,
+.dark nav button[id*="active"] {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: none !important;
+}
+
+.dark .bg-sky-50 {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+}
+
+.dark .bg-emerald-50 {
+  background-color: rgba(52, 211, 153, 0.15) !important;
+}
+
+.dark footer {
+  background-color: #0c1220 !important;
+  border-color: #1e293b !important;
+}
+
+/* Forçado para branco nos cabeçalhos da tabela no modo claro/escuro */
+.light .force-white-thead th,
+.dark .force-white-thead th {
+  color: #ffffff !important;
+}
+

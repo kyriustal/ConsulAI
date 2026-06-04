@@ -1,0 +1,53 @@
+name: ConsulAI CI Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    name: Build & Validate Compilation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-size: 'large'
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Lint compilation
+        run: npm run lint
+
+      - name: Build fullstack application (Vite Client + Esbuild Server)
+        run: npm run build
+        env:
+          NODE_ENV: production
+          # Disable any client-side compile limits if needed, ensure key is mocked for build step
+          GEMINI_API_KEY: "CI_BUILD_PLACEHOLDER"
+
+      - name: Check output artifacts
+        run: |
+          echo "==== Built Artifacts ===="
+          ls -la dist/
+          if [ -f "dist/server.cjs" ]; then
+            echo "✅ Server bundled successfully in dist/server.cjs"
+          else
+            echo "❌ server.cjs not found in dist/"
+            exit 1
+          fi
+          if [ -f "dist/index.html" ]; then
+            echo "✅ Frontend index.html compiled successfully"
+          else
+            echo "❌ index.html not found in dist/"
+            exit 1
+          fi

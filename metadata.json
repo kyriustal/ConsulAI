@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Remix: ConsulAI Engine",
+  "description": "Simulador consular inteligente que analisa score de risco, regras migratórias de vários países (EUA, Canadá, Schengen, etc.) e emite pareceres detalhados com suporte de inteligência artificial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

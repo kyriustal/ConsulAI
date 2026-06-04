@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Open access to users and cases to support both custom email/password 
+    // and Google-authenticated logins without permission/auth issues.
+    
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /cases/{caseId} {
+      allow read, write: if true;
+    }
+    
+    // Default-deny for any other unmatched collection/path
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
