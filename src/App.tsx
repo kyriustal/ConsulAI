@@ -748,129 +748,8 @@ const ALL_WORLD_COUNTRIES = [
   { name: "Zimbábue", flag: "🇿🇼" }
 ];
 
-// Static profiles for quick testing/simulation
-const mockCaseTemplates: { name: string; description: string; data: ApplicantData }[] = [
-  {
-    name: "João Silva (Estudante, Baixíssima Ancoragem)",
-    description: "Espécime clássico de repulsa sob INA 214(b). Jovem, desempregado, sem histórico de viagens e saldo bancário marginal.",
-    data: {
-      applicantName: "João Vicente Silva",
-      passportNumber: "AO992812",
-      age: 21,
-      country: "USA",
-      visaType: "B1/B2 Turismo e Negócios",
-      monthlyIncome: 350,
-      bankBalance: 800,
-      jobType: "unemployed",
-      jobTiesYears: 0,
-      familyInOrigin: "no_ties",
-      travelHistory: ["None"],
-      hasDeniedVisas: "no",
-      hasDeportations: "no",
-      purposeOfTrip: "Turismo em Orlando e visita a amigos",
-      durationOfStayDays: 15,
-      validDocs: true,
-      balanceRecentIncrease: false,
-      jobUnverified: false
-    }
-  },
-  {
-    name: "Dra. Maria Augusta (Vínculos Robustos e Sustentáveis)",
-    description: "Perfil excelente de alta fiabilidade. Juíza concursada, renda regular excelente, histórico pleno e viagens passadas.",
-    data: {
-      applicantName: "Maria Augusta de Sousa",
-      passportNumber: "AO881234",
-      age: 42,
-      country: "Canada",
-      visaType: "Visitor Visa",
-      monthlyIncome: 4800,
-      bankBalance: 12500,
-      jobType: "government",
-      jobTiesYears: 12,
-      familyInOrigin: "strong_ties",
-      travelHistory: ["Schengen", "Brazil"],
-      hasDeniedVisas: "no",
-      hasDeportations: "no",
-      purposeOfTrip: "Congresso de Direito em Vancouver e Férias",
-      durationOfStayDays: 10,
-      validDocs: true,
-      balanceRecentIncrease: false,
-      jobUnverified: false
-    }
-  },
-  {
-    name: "Carlos Medeiros (Alerta de Fraude e Inflagem de Saldo)",
-    description: "Renda informal autônoma alta recente, mas com indício de manipulação bancária (empréstimo de última hora para inflar extrato) e emprego suspeito.",
-    data: {
-      applicantName: "Carlos Eduardo Medeiros",
-      passportNumber: "AO551221",
-      age: 29,
-      country: "Schengen",
-      visaType: "Schengen Short-Stay (Turismo C)",
-      monthlyIncome: 1800,
-      bankBalance: 4200,
-      jobType: "entrepreneur",
-      jobTiesYears: 1,
-      familyInOrigin: "moderate_ties",
-      travelHistory: ["None"],
-      hasDeniedVisas: "no",
-      hasDeportations: "no",
-      purposeOfTrip: "Turismo em Portugal e Espanha",
-      durationOfStayDays: 20,
-      validDocs: true,
-      balanceRecentIncrease: true, // FRAUD INDICATOR
-      jobUnverified: true // FRAUD INDICATOR
-    }
-  },
-  {
-    name: "Dr. António Lourenço (Médico Visto Angola)",
-    description: "Profissional sênior solicitando avaliação prévia de enquadramento legal para visto de turismo/estudos.",
-    data: {
-      applicantName: "António Lourenço Neto",
-      passportNumber: "EP112233",
-      age: 38,
-      country: "Angola",
-      visaType: "Visto de Turismo",
-      monthlyIncome: 3500,
-      bankBalance: 8100,
-      jobType: "stable_private",
-      jobTiesYears: 6,
-      familyInOrigin: "strong_ties",
-      travelHistory: ["Brazil", "Schengen"],
-      hasDeniedVisas: "no",
-      hasDeportations: "no",
-      purposeOfTrip: "Consultoria médica de curta duração e turismo familiar",
-      durationOfStayDays: 30,
-      validDocs: true,
-      balanceRecentIncrease: false,
-      jobUnverified: false
-    }
-  },
-  {
-    name: "Pedro Alvares (Duração Excessiva e Pouca Renda)",
-    description: "Requerente para o Brasil com pouquíssima renda, querendo ficar 90 dias com passagem apenas de ida.",
-    data: {
-      applicantName: "Pedro Alvares Cabral",
-      passportNumber: "AO777666",
-      age: 25,
-      country: "Brazil",
-      visaType: "VIVIS Turismo",
-      monthlyIncome: 600,
-      bankBalance: 1200,
-      jobType: "student",
-      jobTiesYears: 2,
-      familyInOrigin: "moderate_ties",
-      travelHistory: ["None"],
-      hasDeniedVisas: "no",
-      hasDeportations: "no",
-      purposeOfTrip: "Visita e turismo estendido",
-      durationOfStayDays: 90,
-      validDocs: false, // Invalid docs or missing fly tickets
-      balanceRecentIncrease: false,
-      jobUnverified: false
-    }
-  }
-];
+// Static profiles for quick testing/simulation - removed for production UI (data kept for history)
+const mockCaseTemplates: any[] = [];
 
 export interface AppUser {
   uid: string;
@@ -883,6 +762,13 @@ export default function App() {
 
   // User Authenticated State
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+
+  // Enforce dark mode synchronously at render time for unauthenticated state to prevent any light mode flash
+  if (!currentUser && typeof document !== "undefined") {
+    const el = document.documentElement;
+    if (!el.classList.contains("dark")) el.classList.add("dark");
+    if (el.classList.contains("light")) el.classList.remove("light");
+  }
 
   // Switch Login Tab ("login" = Access / SSO, "register" = Creative Sign Up)
   const [loginTab, setLoginTab] = useState<"login" | "register">("login");
@@ -926,6 +812,12 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Login page always in dark mode — no theme switching for unauthenticated state
+    if (!currentUser) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+      return;
+    }
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
       document.documentElement.classList.remove("light");
@@ -935,7 +827,7 @@ export default function App() {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("consul_ai_theme", "light");
     }
-  }, [isDarkMode]);
+  }, [isDarkMode, currentUser]);
 
   // Navigation tabs config (added 'team' and 'profile' options for managing credentials & profile area)
   const [activeTab, setActiveTab] = useState<"simulator" | "rules" | "history" | "team" | "profile" | "denied_visas">("simulator");
@@ -1712,20 +1604,23 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
           ...finalCheckedDocs
         };
 
+        // Use prev as baseline for comparison (not captured formData snapshot) to correctly
+        // detect new values extracted from documents vs existing state
         return {
           ...prev, // Keep ALL current state (typing, concurrent files)
-          // Extract only the fields that were actually modified by the OCR engine
-          applicantName: accumulatedData.applicantName !== formData.applicantName ? accumulatedData.applicantName : prev.applicantName,
-          passportNumber: accumulatedData.passportNumber !== formData.passportNumber ? accumulatedData.passportNumber : prev.passportNumber,
-          age: (accumulatedData.age !== undefined && accumulatedData.age !== formData.age) ? accumulatedData.age : prev.age,
-          country: accumulatedData.country !== formData.country ? accumulatedData.country : prev.country,
-          schengenCountry: accumulatedData.schengenCountry !== formData.schengenCountry ? accumulatedData.schengenCountry : prev.schengenCountry,
-          visaType: accumulatedData.visaType !== formData.visaType ? accumulatedData.visaType : prev.visaType,
-          monthlyIncome: (accumulatedData.monthlyIncome !== undefined && accumulatedData.monthlyIncome !== formData.monthlyIncome) ? accumulatedData.monthlyIncome : prev.monthlyIncome,
-          bankBalance: (accumulatedData.bankBalance !== undefined && accumulatedData.bankBalance !== formData.bankBalance) ? accumulatedData.bankBalance : prev.bankBalance,
-          jobType: accumulatedData.jobType !== formData.jobType ? accumulatedData.jobType : prev.jobType,
-          durationOfStayDays: (accumulatedData.durationOfStayDays !== undefined && accumulatedData.durationOfStayDays !== formData.durationOfStayDays) ? accumulatedData.durationOfStayDays : prev.durationOfStayDays,
-          accommodationType: accumulatedData.accommodationType !== formData.accommodationType ? (accumulatedData.accommodationType as any) : prev.accommodationType,
+          // Only overwrite a field if the OCR engine actually produced a non-empty value
+          applicantName: (accumulatedData.applicantName && accumulatedData.applicantName !== prev.applicantName) ? accumulatedData.applicantName : prev.applicantName,
+          passportNumber: (accumulatedData.passportNumber && accumulatedData.passportNumber !== prev.passportNumber) ? accumulatedData.passportNumber : prev.passportNumber,
+          age: (accumulatedData.age !== undefined && accumulatedData.age > 0 && accumulatedData.age !== prev.age) ? accumulatedData.age : prev.age,
+          country: (accumulatedData.country && accumulatedData.country !== prev.country) ? accumulatedData.country : prev.country,
+          schengenCountry: (accumulatedData.schengenCountry && accumulatedData.schengenCountry !== prev.schengenCountry) ? accumulatedData.schengenCountry : prev.schengenCountry,
+          visaType: (accumulatedData.visaType && accumulatedData.visaType !== prev.visaType) ? accumulatedData.visaType : prev.visaType,
+          monthlyIncome: (accumulatedData.monthlyIncome !== undefined && accumulatedData.monthlyIncome > 0 && accumulatedData.monthlyIncome !== prev.monthlyIncome) ? accumulatedData.monthlyIncome : prev.monthlyIncome,
+          bankBalance: (accumulatedData.bankBalance !== undefined && accumulatedData.bankBalance > 0 && accumulatedData.bankBalance !== prev.bankBalance) ? accumulatedData.bankBalance : prev.bankBalance,
+          jobType: (accumulatedData.jobType && accumulatedData.jobType !== prev.jobType) ? accumulatedData.jobType : prev.jobType,
+          jobTiesYears: (accumulatedData.jobTiesYears !== undefined && accumulatedData.jobTiesYears > 0 && accumulatedData.jobTiesYears !== prev.jobTiesYears) ? accumulatedData.jobTiesYears : prev.jobTiesYears,
+          durationOfStayDays: (accumulatedData.durationOfStayDays !== undefined && accumulatedData.durationOfStayDays > 0 && accumulatedData.durationOfStayDays !== prev.durationOfStayDays) ? accumulatedData.durationOfStayDays : prev.durationOfStayDays,
+          accommodationType: (accumulatedData.accommodationType && accumulatedData.accommodationType !== prev.accommodationType) ? (accumulatedData.accommodationType as any) : prev.accommodationType,
           checkedDocs: mergedCheckedDocs,
           attachedFiles: mergedFiles,
           attachedFile: mergedFiles.length > 0 ? mergedFiles[0] : undefined
@@ -2988,6 +2883,11 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
   // Sign out
   const handleLogout = async () => {
     localStorage.removeItem("consulai_user");
+    // Force dark mode immediately to prevent any light mode flash on the login screen
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    }
     setCurrentUser(null);
     setActiveTab("simulator");
     try {
@@ -3589,9 +3489,9 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                       </div>
                     </div>
 
-                    <div className="p-3 bg-sky-950/20 border border-sky-500/10 rounded-lg text-left">
-                      <p className="text-[11px] text-sky-300 leading-relaxed font-sans">
-                        🔑 <strong>Acesso de Proprietário:</strong> Todas as novas contas registadas por esta via iniciam como <strong>Proprietário (Controlo Geral)</strong>. Poderá adicionar colaboradores e gerir os respetivos cargos no painel interno.
+                    <div className="p-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-500/10 rounded-lg text-left consul-owner-notice">
+                      <p className="text-[11px] leading-relaxed font-sans text-black dark:text-slate-200">
+                        🔑 <strong className="text-black dark:text-white">Acesso de Proprietário:</strong> Todas as novas contas registadas por esta via iniciam como <strong className="text-black dark:text-white">Proprietário (Controlo Geral)</strong>. Poderá adicionar colaboradores e gerir os respetivos cargos no painel interno.
                       </p>
                     </div>
 
@@ -3841,36 +3741,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         {activeTab === "simulator" && (
           <div className="space-y-6">
             
-            {/* Template Cases Quick Select Slider */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm animate-fade-in">
-              <h2 className="text-xs uppercase tracking-widest font-mono font-bold text-slate-800 mb-2.5 flex items-center space-x-2">
-                <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
-                <span>Casos Predefinidos de Teste (Dificuldades Consulares Reais)</span>
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                {mockCaseTemplates.map((tpl, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => selectTemplate(tpl)}
-                    className="p-3 rounded-lg text-left bg-[#1f2937]/90 hover:bg-[#111827] border border-[#374151] hover:border-sky-500/40 transition-all duration-150 flex flex-col justify-between group h-full cursor-pointer"
-                  >
-                    <div>
-                      <span className="block text-xs font-semibold text-white group-hover:text-sky-400 truncate font-display">
-                        {tpl.name}
-                      </span>
-                      <p className="text-[10.5px] text-slate-300 leading-snug mt-1 line-clamp-3">
-                        {tpl.description}
-                      </p>
-                    </div>
-                    <span className="text-[9px] uppercase tracking-wider text-sky-400 font-mono mt-2 inline-flex items-center space-x-1">
-                      <span>Selecionar</span>
-                      <ArrowRight className="w-2.5 h-2.5" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Template Cases Quick Select Slider — hidden from production UI (data kept for history) */}
 
             {/* Live Dual Panel Interaction */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -5874,7 +5745,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             
             {/* Upper Intro Header Banner */}
             <div className="bg-gradient-to-r from-rose-900/40 via-purple-950/20 to-black border border-rose-500/20 rounded-xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="space-y-2 z-10 max-w-3xl">
+              <div className="space-y-2 z-10 w-full">
                 <div className="inline-flex items-center space-x-2 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded text-white font-mono text-[10px] font-bold uppercase tracking-widest">
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
                   <span>Auditoria de Indeferimentos & Recursos</span>
@@ -5885,60 +5756,6 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                   Submete a nota ou carta oficial de recusa Consular juntamente com o dossiê de suporte separado (como o Passaporte, Extratos e Declarações). Nosso motor analisará as contradições fácticas em busca de erros de preenchimento, falsas sinalizações e gerará uma rota para a aprovação definitiva na nova candidatura.
                 </p>
-              </div>
-              
-              {/* Quick Preset Buttons */}
-              <div className="bg-[#0f172a]/80 border border-[#1e293b] p-4.5 rounded-xl space-y-2.5 w-full md:w-80 shrink-0 z-10">
-                <span className="block text-[10px] uppercase font-mono font-bold text-rose-400">Casos Práticos de Teste Real</span>
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDeniedTemplate("estudo_lux")}
-                    className={`text-left p-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between border cursor-pointer ${
-                      selectedDeniedTemplate === "estudo_lux"
-                        ? "bg-rose-500/10 border-rose-500 text-white"
-                        : "bg-slate-900/50 border-[#2d3748] text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div>
-                      <span className="block truncate font-bold">1. João Silva</span>
-                      <span className="text-[10px] text-slate-450">Estudo / Luxemburgo (Financeiro)</span>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-rose-400" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDeniedTemplate("turismo_port")}
-                    className={`text-left p-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between border cursor-pointer ${
-                      selectedDeniedTemplate === "turismo_port"
-                        ? "bg-rose-500/10 border-rose-500 text-white"
-                        : "bg-slate-900/50 border-[#2d3748] text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div>
-                      <span className="block truncate font-bold">2. Maria Clara</span>
-                      <span className="text-[10px] text-slate-450">Turismo / Portugal (Intenção/Vínculo)</span>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-rose-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDeniedTemplate("trabalho_ale")}
-                    className={`text-left p-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-between border cursor-pointer ${
-                      selectedDeniedTemplate === "trabalho_ale"
-                        ? "bg-rose-500/10 border-rose-500 text-white"
-                        : "bg-slate-900/50 border-[#2d3748] text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    <div>
-                      <span className="block truncate font-bold">3. Carlos Manuel</span>
-                      <span className="text-[10px] text-slate-450">Trabalho / Alemanha (Anabin/Diploma)</span>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-rose-400" />
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -6432,7 +6249,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
 
               {deletedCases.length === 0 ? (
                 <div className="text-center p-6 text-slate-500 text-[11px] border border-dashed border-[#1e293b]/50 rounded-lg bg-[#0e1420]/30_">
-                  Lixeira vazia. Nenhum registro pendente de purgação permanente.
+                  Lixeira vazia. Nenhum registro pendente de eliminação permanente.
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-[#1e293b]/50 rounded-lg bg-[#0e1420]/25">
@@ -6487,7 +6304,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                                 className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-450 p-1 py-1.5 px-2.5 rounded font-mono text-[9px] uppercase tracking-wider flex items-center space-x-1 hover:text-white transition-all cursor-pointer border border-rose-500/20"
                               >
                                 <Trash2 className="w-2.5 h-2.5" />
-                                <span>Purgar</span>
+                                <span>Eliminar</span>
                               </button>
                             )}
                           </td>

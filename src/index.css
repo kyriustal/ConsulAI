@@ -333,3 +333,12 @@ body {
   color: #ffffff !important;
 }
 
+/* Custom style for the registration disclaimer notice (owner access warning) */
+.consul-owner-notice p {
+  color: #e2e8f0 !important; /* Default light slate color for readability on dark backgrounds */
+}
+.light .consul-owner-notice p {
+  color: #000000 !important; /* Black in light mode */
+}
+
+

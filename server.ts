@@ -8,16 +8,142 @@ import { getDiplomaticRelation } from "./src/lib/diplomaticRelations";
 // Load environment variables
 dotenv.config();
 
+// ---------------------------------------------------------------------------
+// GEMINI MULTI-KEY POOL
+// Reads GEMINI_API_KEY, GEMINI_API_KEY_1 … GEMINI_API_KEY_9 from .env and
+// rotates between them. A key that returns 429 is parked for KEY_COOLDOWN_MS
+// before being retried. OpenAI is only used when ALL Gemini keys fail.
+// ---------------------------------------------------------------------------
+const KEY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+interface GeminiKeyEntry {
+  key: string;
+  client: GoogleGenAI;
+  exhaustedUntil: number; // epoch ms — 0 = available
+}
+
+class GeminiKeyPool {
+  private entries: GeminiKeyEntry[] = [];
+  private activeIndex: number = 0;
+
+  constructor() {
+    // Collect all configured Gemini keys from environment variables.
+    // Supports: comma-separated values in ANY key, plus GEMINI_API_KEY, GEMINI_API_KEY_1 … GEMINI_API_KEY_N
+    const candidates: string[] = [];
+    const placeholders = new Set(["MY_GEMINI_API_KEY", ""]);
+
+    // Find all env variables starting with GEMINI_API_KEY
+    const envKeys = Object.keys(process.env).filter(k => k.startsWith("GEMINI_API_KEY"));
+    
+    // Sort keys to ensure deterministic order (GEMINI_API_KEY first, then GEMINI_API_KEY_1, GEMINI_API_KEY_2...)
+    envKeys.sort((a, b) => {
+      if (a === "GEMINI_API_KEY") return -1;
+      if (b === "GEMINI_API_KEY") return 1;
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    for (const envKey of envKeys) {
+      const rawVal = process.env[envKey];
+      if (!rawVal) continue;
+      
+      // Split by comma in case user puts multiple keys in a single env variable
+      const splitKeys = rawVal.split(",").map(k => k.trim());
+      for (const val of splitKeys) {
+        if (val && !placeholders.has(val) && !candidates.includes(val)) {
+          candidates.push(val);
+        }
+      }
+    }
+
+    for (const key of candidates) {
+      this.entries.push({
+        key,
+        client: new GoogleGenAI({
+          apiKey: key,
+          httpOptions: { headers: { "User-Agent": "aistudio-build" } }
+        }),
+        exhaustedUntil: 0
+      });
+    }
+
+    console.log(`[ConsulAI KeyPool] Initialized with ${this.entries.length} Gemini API key(s).`);
+  }
+
+  hasKeys(): boolean {
+    return this.entries.length > 0;
+  }
+
+  /**
+   * Returns the currently active client entry.
+   * If the current active key is exhausted, it scans for the next available key.
+   * Returns null if every key is currently exhausted.
+   */
+  getActiveEntry(): GeminiKeyEntry | null {
+    const now = Date.now();
+    const total = this.entries.length;
+    if (total === 0) return null;
+
+    // Check if the current active entry is healthy
+    const current = this.entries[this.activeIndex];
+    if (current.exhaustedUntil === 0 || now >= current.exhaustedUntil) {
+      current.exhaustedUntil = 0; // reset cooldown if expired
+      return current;
+    }
+
+    // Current is exhausted, search for the next available one starting from the current index + 1
+    for (let offset = 1; offset < total; offset++) {
+      const nextIdx = (this.activeIndex + offset) % total;
+      const candidate = this.entries[nextIdx];
+      if (candidate.exhaustedUntil === 0 || now >= candidate.exhaustedUntil) {
+        candidate.exhaustedUntil = 0; // reset cooldown if expired
+        this.activeIndex = nextIdx;
+        console.log(`[ConsulAI KeyPool] Switched active key index to ${nextIdx} (key: ${candidate.key.slice(0, 8)}…)`);
+        return candidate;
+      }
+    }
+
+    return null; // all keys are exhausted
+  }
+
+  /**
+   * Marks the current active key as exhausted and proactively updates activeIndex to next available.
+   */
+  markActiveExhausted(): void {
+    const total = this.entries.length;
+    if (total === 0) return;
+
+    const current = this.entries[this.activeIndex];
+    current.exhaustedUntil = Date.now() + KEY_COOLDOWN_MS;
+    const keyHint = current.key.slice(0, 8) + "…";
+    console.log(`[ConsulAI KeyPool] Key ${keyHint} (index ${this.activeIndex}) marked exhausted for ${KEY_COOLDOWN_MS / 60000} min.`);
+
+    // Proactively scan for the next available key to update activeIndex
+    const now = Date.now();
+    for (let offset = 1; offset < total; offset++) {
+      const nextIdx = (this.activeIndex + offset) % total;
+      const candidate = this.entries[nextIdx];
+      if (candidate.exhaustedUntil === 0 || now >= candidate.exhaustedUntil) {
+        candidate.exhaustedUntil = 0;
+        this.activeIndex = nextIdx;
+        console.log(`[ConsulAI KeyPool] Proactively switched active key index to ${nextIdx} (key: ${candidate.key.slice(0, 8)}…)`);
+        break;
+      }
+    }
+  }
+}
+
+// Singleton pool — instantiated once at module load time
+const geminiPool = new GeminiKeyPool();
+
 /**
- * Checks if the Gemini API key is configured
+ * Checks if at least one Gemini API key is configured.
  */
 function hasGeminiKey(): boolean {
-  const apiKey = process.env.GEMINI_API_KEY;
-  return !!(apiKey && apiKey !== "MY_GEMINI_API_KEY");
+  return geminiPool.hasKeys();
 }
 
 /**
- * Checks if the OpenAI API key is configured
+ * Checks if the OpenAI API key is configured.
  */
 function hasOpenAIKey(): boolean {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -25,29 +151,10 @@ function hasOpenAIKey(): boolean {
 }
 
 /**
- * Checks if any AI provider is available
+ * Checks if any AI provider is available.
  */
 function hasAIKey(): boolean {
   return hasGeminiKey() || hasOpenAIKey();
-}
-
-let aiInstance: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI {
-  if (!aiInstance) {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key || key === "MY_GEMINI_API_KEY") {
-      throw new Error("GEMINI_API_KEY is not configured or is a placeholder.");
-    }
-    aiInstance = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        }
-      }
-    });
-  }
-  return aiInstance;
 }
 
 /**
@@ -179,8 +286,8 @@ async function callOpenAIDirect(options: {
 }
 
 /**
- * REST translation layer with the Gemini API using the official @google/genai SDK
- * Supports automated transparent failover to OpenAI (gpt-4o) when Gemini fails or is rate-limited.
+ * REST translation layer with the Gemini API using the official @google/genai SDK.
+ * Iterates through every key in the GeminiKeyPool before falling back to OpenAI.
  */
 async function callGeminiDirect(options: {
   contents: any[];
@@ -190,97 +297,88 @@ async function callGeminiDirect(options: {
   temperature?: number;
   googleSearch?: boolean;
 }): Promise<string> {
-  // If Gemini key is completely absent but OpenAI is present, route immediately to OpenAI to bypass initialization issues
+  // If no Gemini key at all but OpenAI is available, route immediately
   if (!hasGeminiKey() && hasOpenAIKey()) {
-    console.log("[ConsulAI API Routing] Gemini Key is missing but OpenAI Key is configured. Routing directly to OpenAI...");
+    console.log("[ConsulAI API Routing] No Gemini key configured. Routing directly to OpenAI...");
     return callOpenAIDirect(options);
   }
 
-  try {
-    const client = getGeminiClient();
+  // Build parts array (shared across all key attempts)
+  const parts = options.contents.map((item: any) => {
+    if (typeof item === "string") return { text: item };
+    if (item.text) return { text: item.text };
+    if (item.inlineData) return { inlineData: { mimeType: item.inlineData.mimeType, data: item.inlineData.data } };
+    return item;
+  });
 
-    const parts = options.contents.map(item => {
-      if (typeof item === "string") {
-        return { text: item };
-      }
-      if (item.text) {
-        return { text: item.text };
-      }
-      if (item.inlineData) {
-        return {
-          inlineData: {
-            mimeType: item.inlineData.mimeType,
-            data: item.inlineData.data
-          }
-        };
-      }
-      return item;
-    });
+  const config: any = {};
+  if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
+  if (options.temperature !== undefined) config.temperature = options.temperature;
+  if (options.googleSearch) {
+    config.tools = [{ googleSearch: {} }];
+    // NEVER pass responseMimeType/responseSchema with a tool — unsupported (400 INVALID_ARGUMENT)
+  } else {
+    if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
+    if (options.responseSchema) config.responseSchema = options.responseSchema;
+  }
 
-    const config: any = {};
-    if (options.systemInstruction) {
-      config.systemInstruction = options.systemInstruction;
-    }
-    if (options.temperature !== undefined) {
-      config.temperature = options.temperature;
-    }
-    
-    if (options.googleSearch) {
-      config.tools = [{ googleSearch: {} }];
-      // NEVER pass responseMimeType: "application/json" or responseSchema when a tool is specified,
-      // as it is unsupported by the platform and throws a 400 INVALID_ARGUMENT error.
-    } else {
-      if (options.responseMimeType) {
-        config.responseMimeType = options.responseMimeType;
-      }
-      if (options.responseSchema) {
-        config.responseSchema = options.responseSchema;
-      }
-    }
+  // Try every available Gemini key in round-robin order
+  const totalKeys = (geminiPool as any).entries?.length ?? 0;
+  let lastGeminiError: string = "";
 
-    const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: { parts },
-      config
-    });
+  for (let attempt = 0; attempt < Math.max(totalKeys, 1); attempt++) {
+    const entry = geminiPool.getActiveEntry();
+    if (!entry) break; // all keys currently exhausted
 
-    const outputText = response.text;
-    if (!outputText) {
-      throw new Error("Invalid or empty response structure from Gemini API.");
-    }
-
-    return outputText;
-
-  } catch (geminiError: any) {
-    const errorMsg = geminiError.message || String(geminiError);
-    let readableError = errorMsg;
+    const keyHint = entry.key.slice(0, 8) + "…";
     try {
-      if (errorMsg.trim().startsWith("{")) {
-        const parsed = JSON.parse(errorMsg);
-        if (parsed?.error?.message) {
-          readableError = parsed.error.message;
-        }
-      }
-    } catch (_) {}
-    if (readableError.includes("RESOURCE_EXHAUSTED") || readableError.includes("quota") || readableError.includes("429")) {
-      readableError = "Gemini API Free-Tier quota limit reached (429 rate limit). Please configure an OpenAI failover key.";
-    }
+      console.log(`[ConsulAI KeyPool] Trying Gemini key ${keyHint} (attempt ${attempt + 1}/${totalKeys || 1})`);
+      const response = await entry.client.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: { parts },
+        config
+      });
 
-    console.log(`[ConsulAI Provider Failover Info] Gemini service returned: ${readableError}`);
-    
-    if (hasOpenAIKey()) {
-      console.log("[ConsulAI Provider Failover] Gracefully switching to OpenAI gpt-4o as active fallback provider...");
+      const outputText = response.text;
+      if (!outputText) throw new Error("Empty response from Gemini API.");
+      return outputText;
+
+    } catch (err: any) {
+      const msg: string = err?.message || String(err);
+      let readable = msg;
       try {
-        return await callOpenAIDirect(options);
-      } catch (openAiError: any) {
-        console.log(`[ConsulAI Provider Failover Error] OpenAI fallback also failed.`);
-        throw new Error(`Ambos os provedores de Inteligência Artificial falharam no lançamento ou atingiram o limite de solicitações.`);
+        if (msg.trim().startsWith("{")) {
+          const p = JSON.parse(msg);
+          if (p?.error?.message) readable = p.error.message;
+        }
+      } catch (_) {}
+
+      // Mark the current active key as exhausted/failed so we don't try it again during this rotation cycle
+      geminiPool.markActiveExhausted();
+
+      const isQuota = readable.includes("RESOURCE_EXHAUSTED") || readable.includes("quota") || readable.includes("429");
+      if (isQuota) {
+        lastGeminiError = `Key ${keyHint} quota exhausted (429).`;
+      } else {
+        lastGeminiError = `Key ${keyHint} failed: ${readable}`;
       }
-    } else {
-      // Re-throw if no fallback key is configured
-      throw new Error(readableError);
+      console.log(`[ConsulAI KeyPool] ${lastGeminiError}. Trying next key...`);
+      continue; // try the next key in the pool
     }
   }
+
+  // All Gemini keys failed — attempt OpenAI fallback
+  console.log(`[ConsulAI Provider Failover] All Gemini keys failed. Last error: ${lastGeminiError}`);
+  if (hasOpenAIKey()) {
+    console.log("[ConsulAI Provider Failover] Switching to OpenAI gpt-4o as final fallback...");
+    try {
+      return await callOpenAIDirect(options);
+    } catch (openAiError: any) {
+      throw new Error("Ambos os provedores de Inteligência Artificial falharam ou atingiram o limite de solicitações.");
+    }
+  }
+
+  throw new Error(lastGeminiError || "Nenhuma chave Gemini disponível e sem fallback OpenAI configurado.");
 }
 
 const countryRules = {
@@ -564,7 +662,7 @@ const countryRules = {
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

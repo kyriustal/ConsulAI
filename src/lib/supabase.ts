@@ -63,7 +63,7 @@ const saveFallbackCases = (cases: any[]) => {
 
 // Unified database operations wrapper that seamlessly uses real Supabase or localStorage fallback
 export const dbService = {
-  // Users Operations
+  // ------------------------------------------------------------------ Users
   async getUser(email: string) {
     const cleanEmail = email.trim().toLowerCase();
     if (isSupabaseConfigured && supabase) {
@@ -82,6 +82,7 @@ export const dbService = {
           return {
             email: data.email,
             uid: data.uid,
+            name: data.name || "",
             password: data.password,
             role: data.role,
             createdAt: data.created_at,
@@ -102,7 +103,7 @@ export const dbService = {
 
   async saveUser(email: string, userData: any) {
     const cleanEmail = email.trim().toLowerCase();
-    const payload = {
+    const payload: Record<string, any> = {
       email: cleanEmail,
       uid: userData.uid,
       password: userData.password,
@@ -111,6 +112,11 @@ export const dbService = {
       created_by: userData.createdBy || "system",
       updated_at: new Date().toISOString()
     };
+
+    // Include optional name field if provided
+    if (userData.name !== undefined && userData.name !== null) {
+      payload.name = userData.name;
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -189,6 +195,7 @@ export const dbService = {
         return (data || []).map((row: any) => ({
           email: row.email,
           uid: row.uid,
+          name: row.name || "",
           password: row.password,
           role: row.role,
           createdAt: row.created_at,
@@ -203,7 +210,7 @@ export const dbService = {
     }
   },
 
-  // Cases / Evaluations Operations
+  // ------------------------------------------------------------------ Cases / Evaluations
   async listCases() {
     if (isSupabaseConfigured && supabase) {
       try {
@@ -222,7 +229,8 @@ export const dbService = {
           country: row.country,
           decision: row.decision,
           riskScore: Number(row.risk_score),
-          result: row.result
+          result: row.result,
+          agentEmail: row.agent_email || ""
         }));
       } catch (err) {
         console.warn("Falha ao carregar casos do Supabase, usando memória local:", err);
@@ -234,7 +242,7 @@ export const dbService = {
   },
 
   async saveCase(caseEntry: any) {
-    const payload = {
+    const payload: Record<string, any> = {
       id: caseEntry.id,
       created_at: caseEntry.createdAt || new Date().toISOString(),
       applicant_name: caseEntry.applicantName,
@@ -243,6 +251,11 @@ export const dbService = {
       risk_score: caseEntry.riskScore,
       result: caseEntry.result
     };
+
+    // Include optional agent_email field if provided
+    if (caseEntry.agentEmail !== undefined && caseEntry.agentEmail !== null) {
+      payload.agent_email = caseEntry.agentEmail;
+    }
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -306,7 +319,7 @@ export const dbService = {
     }
   },
 
-  // Activity Logs Operations
+  // ------------------------------------------------------------------ Activity Logs
   async listActivityLogs() {
     if (isSupabaseConfigured && supabase) {
       try {
