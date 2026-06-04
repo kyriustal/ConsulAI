@@ -6,39 +6,54 @@ on:
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: Build & Deploy to Hostinger
     runs-on: ubuntu-latest
 
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🟢 Set up Node.js
+      - name: 🟢 Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install all dependencies
         run: npm ci || npm install
 
-      - name: 🛠️ Build fullstack application (Vite Client + Esbuild Server)
+      - name: 🛠️ Build fullstack application (Vite + Esbuild full bundle)
         run: npm run build
         env:
           NODE_ENV: production
           GEMINI_API_KEY: "CI_BUILD_PLACEHOLDER"
 
+      - name: ✅ Verify built artifacts
+        run: |
+          echo "==== Built Artifacts ===="
+          ls -la dist/
+          if [ -f "dist/server.cjs" ]; then
+            echo "✅ dist/server.cjs OK"
+          else
+            echo "❌ dist/server.cjs NOT FOUND"
+            exit 1
+          fi
+          if [ -f "dist/index.html" ]; then
+            echo "✅ dist/index.html OK"
+          else
+            echo "❌ dist/index.html NOT FOUND"
+            exit 1
+          fi
+
       - name: 📁 Prepare deployment package
         run: |
-          mkdir deploy_dist
-          cp -r dist deploy_dist/
+          mkdir -p deploy_dist
+          cp -r dist deploy_dist/dist
           cp package.json deploy_dist/
-          cp package-lock.json deploy_dist/
-          if [ -f ".env.example" ]; then
-            cp .env.example deploy_dist/
-          fi
-          echo "==== Prepared Files ===="
+          cp server.js deploy_dist/
+          echo "==== Files to deploy ===="
           ls -la deploy_dist/
+          ls -la deploy_dist/dist/
 
       - name: 📂 Sync files to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -47,6 +62,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./deploy_dist/
-          # Change this to public_html/ or subfolder if your Node.js application points there
           server-dir: ./
           dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
