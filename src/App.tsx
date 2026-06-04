@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { 
   ShieldAlert, 
   CheckCircle2, 
@@ -832,8 +833,17 @@ export default function App() {
     }
   }, [isDarkMode, currentUser]);
 
-  // Navigation tabs config (added 'team' and 'profile' options for managing credentials & profile area)
-  const [activeTab, setActiveTab] = useState<"simulator" | "rules" | "history" | "team" | "profile" | "denied_visas">("simulator");
+  // Navigation tabs config — synced to URL search params for browser history support
+  const [searchParams, setSearchParams] = useSearchParams();
+  const TAB_VALUES = ["simulator", "rules", "history", "team", "profile", "denied_visas"] as const;
+  type TabType = typeof TAB_VALUES[number];
+  const rawTab = searchParams.get("tab") as TabType | null;
+  const activeTab: TabType = TAB_VALUES.includes(rawTab as TabType) ? (rawTab as TabType) : "simulator";
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    setSearchParams({ tab }, { replace: false });
+  }, [setSearchParams]);
+
   const [selectedRuleCategory, setSelectedRuleCategory] = useState<"visitor" | "long_stay">("visitor");
 
   // States for "Vistos Negados" section
@@ -3853,7 +3863,8 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
       {/* Main Container Area */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
         
-        {/* Banner with Global Stats */}
+        {/* Banner with Global Stats — only visible on the main panel */}
+        {activeTab === "simulator" && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-[#111827] border border-[#1f2937] p-3.5 rounded-xl flex items-center space-x-3.5">
             <div className="p-2.5 rounded-lg bg-sky-500/10 text-sky-400">
@@ -3899,6 +3910,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             </div>
           </div>
         </div>
+        )}
 
         {/* Tab content renderer */}
         {activeTab === "simulator" && (

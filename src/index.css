@@ -7,12 +7,31 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* Ensure the app fills exactly the device screen — no unwanted zoom or overflow */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
 /* Base custom styling for a sleek government-CRM digital look */
 body {
   background: radial-gradient(circle at top, #0c1220 0%, #070b13 100%) no-repeat fixed;
   background-color: #070b13;
   color: #f8fafc;
   font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
 }
 
 .text-white-force {
@@ -308,6 +327,21 @@ body {
 .dark nav button[id*="active"] {
   background-color: #0284c7 !important;
   color: #ffffff !important;
+}
+
+/* Light mode: nav menu text must be black for legibility on white header */
+.light nav button {
+  color: #0f172a !important;
+}
+
+.light nav button:hover {
+  background-color: rgba(2, 132, 199, 0.08) !important;
+  color: #0284c7 !important;
+}
+
+.light nav button.bg-sky-100 {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
 }
 
 .dark .shadow-sm {
