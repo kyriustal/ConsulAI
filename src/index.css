@@ -2,9 +2,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: Arial, Helvetica, ui-sans-serif, system-ui, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-mono: "Courier New", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* Ensure the app fills exactly the device screen — no unwanted zoom or overflow */
@@ -375,4 +375,832 @@ body {
   color: #000000 !important; /* Black in light mode */
 }
 
+/* DS-160 inspired visual skin for the ConsulAI applicant form.
+   Content and field behavior remain owned by the React form. */
+.ds160-form-shell {
+  background: #ffffff !important;
+  border: 1px solid #c7c7c7 !important;
+  border-radius: 0 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+  color: #111827 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
 
+.ds160-form-shell > div:first-child {
+  margin: -1.25rem -1.25rem 1rem !important;
+  padding: 0.7rem 1rem !important;
+  background: linear-gradient(#f8f8f8, #e7e7e7) !important;
+  border-bottom: 3px solid #b00000 !important;
+}
+
+.ds160-form-shell h2 {
+  color: #182958 !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+}
+
+.ds160-form-shell svg {
+  color: #254f87 !important;
+}
+
+.ds160-form-shell button[type="button"] {
+  border-radius: 0 !important;
+}
+
+.ds160-form-shell > div:first-child button {
+  color: #7f1d1d !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.ds160-applicant-form {
+  color: #111827 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.ds160-applicant-form > div {
+  background: #f7f7f7 !important;
+  border: 1px solid #dedede !important;
+  border-radius: 0 !important;
+  padding: 0.9rem !important;
+  box-shadow: none !important;
+}
+
+.ds160-applicant-form > div:has(input:required),
+.ds160-applicant-form > div:has(select:required),
+.ds160-applicant-form > div:has(textarea:required) {
+  background: #ffffff !important;
+}
+
+.ds160-applicant-form label,
+.ds160-applicant-form .block.text-xs,
+.ds160-applicant-form .block.text-\[10px\],
+.ds160-applicant-form .block.text-\[11px\] {
+  color: #111827 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.ds160-applicant-form input,
+.ds160-applicant-form select,
+.ds160-applicant-form textarea {
+  width: 100%;
+  background: #ffffff !important;
+  border: 1px solid #7d7d7d !important;
+  border-radius: 0 !important;
+  color: #000000 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.78rem !important;
+  min-height: 1.55rem !important;
+  padding: 0.18rem 0.35rem !important;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.08) !important;
+}
+
+.ds160-applicant-form textarea {
+  min-height: 4.5rem !important;
+}
+
+.ds160-applicant-form input:focus,
+.ds160-applicant-form select:focus,
+.ds160-applicant-form textarea:focus {
+  border-color: #254f87 !important;
+  outline: 2px solid rgba(37, 79, 135, 0.18) !important;
+  outline-offset: 0 !important;
+}
+
+.ds160-applicant-form input[type="checkbox"],
+.ds160-applicant-form input[type="radio"] {
+  width: 0.85rem !important;
+  min-height: 0.85rem !important;
+  height: 0.85rem !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  accent-color: #254f87;
+  box-shadow: none !important;
+}
+
+.ds160-applicant-form p,
+.ds160-applicant-form span,
+.ds160-applicant-form strong {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.ds160-applicant-form p,
+.ds160-applicant-form .text-slate-300,
+.ds160-applicant-form .text-slate-400,
+.ds160-applicant-form .text-slate-500 {
+  color: #555555 !important;
+}
+
+.ds160-applicant-form strong,
+.ds160-applicant-form .text-white {
+  color: #1f2937 !important;
+}
+
+.ds160-applicant-form .grid button[type="button"] {
+  background: #f4f4f4 !important;
+  border: 1px solid #b8b8b8 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.ds160-applicant-form .grid button[type="button"]:hover {
+  background: #e9eef6 !important;
+  border-color: #254f87 !important;
+}
+
+.ds160-applicant-form .grid button[type="button"] span:first-child {
+  color: #182958 !important;
+}
+
+.ds160-applicant-form .rounded-xl,
+.ds160-applicant-form .rounded-lg,
+.ds160-applicant-form .rounded,
+.ds160-applicant-form [class*="rounded-"] {
+  border-radius: 0 !important;
+}
+
+.ds160-applicant-form > button[type="submit"] {
+  background: linear-gradient(#c01920, #890000) !important;
+  border: 1px solid #6f0000 !important;
+  border-radius: 0 !important;
+  color: #ffffff !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+.ds160-applicant-form > button[type="submit"] svg,
+.ds160-applicant-form > button[type="submit"] span {
+  color: #ffffff !important;
+}
+
+.ds160-applicant-form > button[type="submit"]:hover {
+  background: linear-gradient(#d6232a, #9d0000) !important;
+}
+
+.dark .ds160-form-shell {
+  background: #0b1220 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .ds160-form-shell > div:first-child {
+  background: linear-gradient(#10203a, #07101f) !important;
+  border-bottom-color: #c01920 !important;
+}
+
+.dark .ds160-form-shell h2 {
+  color: #ffffff !important;
+}
+
+.dark .ds160-form-shell > div:first-child button {
+  color: #fecaca !important;
+}
+
+.dark .ds160-form-shell svg {
+  color: #93c5fd !important;
+}
+
+.dark .ds160-applicant-form {
+  color: #f8fafc !important;
+}
+
+.dark .ds160-applicant-form > div,
+.dark .ds160-applicant-form > div:has(input:required),
+.dark .ds160-applicant-form > div:has(select:required),
+.dark .ds160-applicant-form > div:has(textarea:required) {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .ds160-applicant-form label,
+.dark .ds160-applicant-form .block.text-xs,
+.dark .ds160-applicant-form .block.text-\[10px\],
+.dark .ds160-applicant-form .block.text-\[11px\] {
+  color: #f8fafc !important;
+}
+
+.dark .ds160-applicant-form input,
+.dark .ds160-applicant-form select,
+.dark .ds160-applicant-form textarea {
+  background: #020617 !important;
+  border-color: #64748b !important;
+  color: #ffffff !important;
+}
+
+.dark .ds160-applicant-form input::placeholder,
+.dark .ds160-applicant-form textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.dark .ds160-applicant-form input:focus,
+.dark .ds160-applicant-form select:focus,
+.dark .ds160-applicant-form textarea:focus {
+  border-color: #93c5fd !important;
+  outline-color: rgba(147, 197, 253, 0.35) !important;
+}
+
+.dark .ds160-applicant-form p,
+.dark .ds160-applicant-form span,
+.dark .ds160-applicant-form .text-slate-300,
+.dark .ds160-applicant-form .text-slate-400,
+.dark .ds160-applicant-form .text-slate-500 {
+  color: #d1d5db !important;
+}
+
+.dark .ds160-applicant-form strong,
+.dark .ds160-applicant-form .text-white {
+  color: #ffffff !important;
+}
+
+.dark .ds160-applicant-form .grid button[type="button"] {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+.dark .ds160-applicant-form .grid button[type="button"]:hover {
+  background: #172554 !important;
+  border-color: #93c5fd !important;
+}
+
+.dark .ds160-applicant-form .grid button[type="button"] span:first-child {
+  color: #ffffff !important;
+}
+
+.dark .ds160-applicant-form > button[type="submit"],
+.dark .ds160-applicant-form > button[type="submit"] svg,
+.dark .ds160-applicant-form > button[type="submit"] span {
+  color: #ffffff !important;
+}
+
+.ds160-applicant-form button[data-selected="true"] {
+  background: #d9e6f2 !important;
+  border: 2px solid #182958 !important;
+  color: #111111 !important;
+  box-shadow: inset 0 0 0 3px #ffffff !important;
+}
+
+.ds160-applicant-form button[data-selected="true"] span:first-child {
+  color: #071f54 !important;
+}
+
+.ds160-applicant-form button[data-selected="true"] span:last-child {
+  background: #182958 !important;
+  border-color: #182958 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.ds160-applicant-form button[data-selected="false"] {
+  opacity: 0.78;
+}
+
+.dark .ds160-applicant-form button[data-selected="true"] {
+  background: #10203a !important;
+  border: 2px solid #93c5fd !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 3px #020617 !important;
+}
+
+.dark .ds160-applicant-form button[data-selected="true"] span:first-child,
+.dark .ds160-applicant-form button[data-selected="true"] p {
+  color: #ffffff !important;
+}
+
+.dark .ds160-applicant-form button[data-selected="true"] span:last-child {
+  background: #93c5fd !important;
+  border-color: #93c5fd !important;
+  color: #07101f !important;
+}
+
+.dark .ds160-applicant-form button[data-selected="false"] {
+  opacity: 0.72;
+}
+
+/* CEAC-inspired clean sitewide skin for ConsulAI.
+   This keeps the original product content and behavior, changing only visual presentation. */
+:root {
+  --ceac-navy: #0b3854;
+  --ceac-navy-deep: #071f33;
+  --ceac-blue: #1f4f7a;
+  --ceac-red: #9d160f;
+  --ceac-red-dark: #780d08;
+  --ceac-paper: #ffffff;
+  --ceac-page: #f2f2f2;
+  --ceac-panel: #eef4fb;
+  --ceac-border: #b7c5d8;
+  --ceac-ink: #111111;
+  --ceac-muted: #4b5563;
+}
+
+html.light body,
+html.light #root {
+  background: var(--ceac-page) !important;
+  color: var(--ceac-ink) !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+html.dark body,
+html.dark #root {
+  background: #06111f !important;
+  color: #f8fafc !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+body *,
+.font-sans,
+.font-mono {
+  font-family: Arial, Helvetica, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+.font-display,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: Georgia, "Times New Roman", serif !important;
+  letter-spacing: 0 !important;
+}
+
+main {
+  background: var(--ceac-paper) !important;
+  color: var(--ceac-ink) !important;
+  max-width: 1140px !important;
+  margin-top: 0 !important;
+  padding-top: 2rem !important;
+  padding-bottom: 2rem !important;
+}
+
+html.dark main {
+  background: #0b1220 !important;
+  color: #f8fafc !important;
+}
+
+header {
+  position: sticky !important;
+  background: var(--ceac-navy) !important;
+  border-bottom: 4px solid #d6dbe4 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+header > div {
+  max-width: 1140px !important;
+}
+
+header img,
+aside img {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+header .font-display,
+aside .font-display {
+  color: #ffffff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 700 !important;
+}
+
+header p,
+header span:not([class*="bg-"]),
+header button,
+aside p,
+aside span:not([class*="bg-"]),
+aside button {
+  color: #ffffff !important;
+}
+
+header nav button,
+aside nav button {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #ffffff !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+header nav button:hover,
+aside nav button:hover {
+  background: #dce8f5 !important;
+  border-color: #9fb5cf !important;
+  color: #061a31 !important;
+}
+
+header nav button.bg-sky-100,
+header nav button[class*="bg-sky-100"],
+aside nav button[class*="bg-sky-500"],
+aside nav button[class*="bg-sky-100"] {
+  background: linear-gradient(#f7fbff, #c9dcee) !important;
+  border: 1px solid #9fb5cf !important;
+  color: #071f54 !important;
+}
+
+aside {
+  background: var(--ceac-navy) !important;
+  border-color: #9fb5cf !important;
+}
+
+footer {
+  background: #eeeeee !important;
+  border-top: 1px solid #c8c8c8 !important;
+  color: #111111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+footer p,
+footer div,
+footer span {
+  color: #111111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+html.dark footer {
+  background: #07101f !important;
+  border-color: #334155 !important;
+}
+
+html.dark footer p,
+html.dark footer div,
+html.dark footer span {
+  color: #e5e7eb !important;
+}
+
+main h1,
+main h2,
+main h3 {
+  color: #182958 !important;
+}
+
+main h2,
+main h3 {
+  border-bottom: 1px dotted #7f8faa;
+  padding-bottom: 0.35rem;
+}
+
+html.dark main h1,
+html.dark main h2,
+html.dark main h3 {
+  color: #ffffff !important;
+  border-bottom-color: #475569 !important;
+}
+
+main p,
+main li,
+main span:not(button span):not([class*="bg-"]),
+main label,
+main td,
+main th {
+  color: var(--ceac-ink) !important;
+}
+
+html.dark main p,
+html.dark main li,
+html.dark main span:not(button span):not([class*="bg-"]),
+html.dark main label,
+html.dark main td,
+html.dark main th {
+  color: #f8fafc !important;
+}
+
+main .text-slate-300,
+main .text-slate-400,
+main .text-slate-500,
+main .text-slate-600,
+main .text-slate-700 {
+  color: var(--ceac-muted) !important;
+}
+
+html.dark main .text-slate-300,
+html.dark main .text-slate-400,
+html.dark main .text-slate-500,
+html.dark main .text-slate-600,
+html.dark main .text-slate-700 {
+  color: #d1d5db !important;
+}
+
+main .bg-\[\#111827\],
+main .bg-\[\#0f172a\],
+main .bg-\[\#0a1120\],
+main .bg-\[\#0c1220\]\/90,
+main .bg-\[\#0b0f19\],
+main .bg-\[\#080d1a\],
+main .bg-slate-900,
+main .bg-slate-800,
+main .bg-slate-950 {
+  background: #ffffff !important;
+  border-color: #c7c7c7 !important;
+  color: var(--ceac-ink) !important;
+  box-shadow: none !important;
+}
+
+main .bg-\[\#1f2937\]\/45,
+main .bg-\[\#1f2937\]\/35,
+main .bg-\[\#1f2937\]\/30,
+main .bg-\[\#1e293b\]\/20,
+main .bg-\[\#131f33\],
+main .bg-\[\#101b2d\],
+main .bg-\[\#172554\]\/25,
+main .bg-sky-50,
+main .bg-emerald-50,
+main .bg-slate-50,
+main .bg-slate-100,
+main .bg-white {
+  background: var(--ceac-panel) !important;
+  border-color: var(--ceac-border) !important;
+  color: var(--ceac-ink) !important;
+}
+
+html.dark main .bg-\[\#111827\],
+html.dark main .bg-\[\#0f172a\],
+html.dark main .bg-\[\#0a1120\],
+html.dark main .bg-\[\#0c1220\]\/90,
+html.dark main .bg-\[\#0b0f19\],
+html.dark main .bg-\[\#080d1a\],
+html.dark main .bg-slate-900,
+html.dark main .bg-slate-800,
+html.dark main .bg-slate-950,
+html.dark main .bg-white,
+html.dark main .bg-slate-50,
+html.dark main .bg-slate-100 {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+html.dark main .bg-\[\#1f2937\]\/45,
+html.dark main .bg-\[\#1f2937\]\/35,
+html.dark main .bg-\[\#1f2937\]\/30,
+html.dark main .bg-\[\#1e293b\]\/20,
+html.dark main .bg-\[\#131f33\],
+html.dark main .bg-\[\#101b2d\],
+html.dark main .bg-\[\#172554\]\/25,
+html.dark main .bg-sky-50,
+html.dark main .bg-emerald-50 {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+main .rounded-xl,
+main .rounded-lg,
+main .rounded-md,
+main .rounded,
+main [class*="rounded-"] {
+  border-radius: 0 !important;
+}
+
+main .shadow-xl,
+main .shadow-lg,
+main .shadow-2xl,
+main .shadow-sm,
+main [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+main input,
+main select,
+main textarea {
+  background: #ffffff !important;
+  border: 1px solid #7d7d7d !important;
+  color: #000000 !important;
+  border-radius: 0 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark main input,
+html.dark main select,
+html.dark main textarea {
+  background: #020617 !important;
+  border-color: #64748b !important;
+  color: #ffffff !important;
+}
+
+main input::placeholder,
+main textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+html.dark main input::placeholder,
+html.dark main textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+main input:focus,
+main select:focus,
+main textarea:focus {
+  border-color: var(--ceac-blue) !important;
+  outline: 2px solid rgba(31, 79, 122, 0.22) !important;
+  outline-offset: 0 !important;
+}
+
+button[type="submit"],
+main button.bg-gradient-to-r,
+main button[class*="from-sky-"],
+main button[class*="from-rose-"] {
+  background: linear-gradient(#c01920, #890000) !important;
+  border: 1px solid var(--ceac-red-dark) !important;
+  color: #ffffff !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+button[type="submit"] span,
+button[type="submit"] svg,
+main button.bg-gradient-to-r span,
+main button.bg-gradient-to-r svg {
+  color: #ffffff !important;
+}
+
+main button:not([type="submit"]) {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+main table {
+  background: #ffffff !important;
+  border-collapse: collapse !important;
+  color: #111111 !important;
+}
+
+main th {
+  background: #d9e6f2 !important;
+  color: #071f54 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+main td,
+main th {
+  border-color: #b7c5d8 !important;
+}
+
+html.dark main table {
+  background: #111827 !important;
+  color: #f8fafc !important;
+}
+
+html.dark main th {
+  background: #10203a !important;
+  color: #ffffff !important;
+}
+
+.markdown-body {
+  background: #ffffff !important;
+  color: #111111 !important;
+}
+
+html.dark .markdown-body {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+.markdown-body h3 {
+  color: #182958 !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  text-transform: none !important;
+  border-bottom: 1px dotted #7f8faa !important;
+}
+
+html.dark .markdown-body h3 {
+  color: #ffffff !important;
+  border-bottom-color: #475569 !important;
+}
+
+.markdown-body p,
+.markdown-body li {
+  color: #111111 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+html.dark .markdown-body p,
+html.dark .markdown-body li {
+  color: #f8fafc !important;
+}
+
+/* Remove decorative app effects so pages read cleaner, like the CEAC reference. */
+[class*="blur-"][class*="rounded-full"] {
+  display: none !important;
+}
+
+[class*="shadow-sky"],
+[class*="shadow-indigo"],
+[class*="shadow-rose"] {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+html.light header nav button,
+html.light header nav button span,
+html.light header nav button svg {
+  color: #000000 !important;
+}
+
+html.light header nav button {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: #9fb5cf !important;
+}
+
+html.dark header nav button,
+html.dark header nav button span,
+html.dark header nav button svg {
+  color: #ffffff !important;
+}
+
+html.dark header nav button {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light header nav button:hover,
+html.light header nav button:hover span,
+html.light header nav button:hover svg {
+  color: #000000 !important;
+}
+
+html.dark header nav button:hover,
+html.dark header nav button:hover span,
+html.dark header nav button:hover svg {
+  color: #ffffff !important;
+}
+
+html.dark header nav button:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+.ds160-applicant-form button[data-selected="true"] {
+  background: #b9d0e8 !important;
+  border: 3px solid #071f54 !important;
+  box-shadow: inset 0 0 0 3px #ffffff, 0 0 0 2px #8aa9c9 !important;
+  opacity: 1 !important;
+}
+
+.dark .ds160-applicant-form button[data-selected="true"] {
+  background: #1d4ed8 !important;
+  border: 3px solid #bfdbfe !important;
+  box-shadow: inset 0 0 0 3px #07101f, 0 0 0 2px #60a5fa !important;
+  opacity: 1 !important;
+}
+
+.ds160-applicant-form button[data-selected="false"] {
+  opacity: 0.62 !important;
+}
+
+.migration-country-option {
+  background: #254f87 !important;
+  border-color: #173b68 !important;
+  color: #ffffff !important;
+}
+
+.migration-country-option[data-selected="true"] {
+  background: #173b68 !important;
+  border: 2px solid #071f54 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html.light select,
+html.light select option,
+html.light .ds160-applicant-form select,
+html.light .ds160-applicant-form select option {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+html.light .absolute.top-full button:not(.migration-country-option),
+html.light .absolute.top-full button:not(.migration-country-option) span {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+html.light .migration-country-option,
+html.light .migration-country-option span,
+html.light .migration-country-option[data-selected="true"],
+html.light .migration-country-option[data-selected="true"] span {
+  color: #ffffff !important;
+}
+
+.dark .migration-country-option {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #ffffff !important;
+}
+
+.dark .migration-country-option[data-selected="true"] {
+  background: #93c5fd !important;
+  border-color: #bfdbfe !important;
+  color: #020617 !important;
+}

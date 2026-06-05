@@ -15,11 +15,21 @@ dotenv.config();
 // before being retried. OpenAI is only used when ALL Gemini keys fail.
 // ---------------------------------------------------------------------------
 const KEY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_AI_TEMPERATURE = 0.2;
 
 interface GeminiKeyEntry {
   key: string;
   client: GoogleGenAI;
   exhaustedUntil: number; // epoch ms — 0 = available
+}
+
+interface AIRequestOptions {
+  contents: any[];
+  systemInstruction?: string;
+  responseMimeType?: string;
+  responseSchema?: any;
+  temperature?: number;
+  googleSearch?: boolean;
 }
 
 class GeminiKeyPool {
@@ -157,6 +167,14 @@ function hasAIKey(): boolean {
   return hasGeminiKey() || hasOpenAIKey();
 }
 
+function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+}
+
+function getOpenAIModel(): string {
+  return process.env.OPENAI_MODEL || "gpt-4o";
+}
+
 /**
  * Helper to safely extract and parse JSON from a response string, even if it contains Markdown wrappers or extra conversational text.
  */
@@ -194,13 +212,7 @@ function parseJsonSafely(text: string): any {
  * REST translation layer to make direct requests to the OpenAI Chat Completions API
  * and serve as a transparent high-fidelity backup/failover when Gemini reaches quota limit (429).
  */
-async function callOpenAIDirect(options: {
-  contents: any[];
-  systemInstruction?: string;
-  responseMimeType?: string;
-  responseSchema?: any;
-  temperature?: number;
-}): Promise<string> {
+async function callOpenAIDirect(options: AIRequestOptions): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || apiKey === "MY_OPENAI_API_KEY") {
     throw new Error("OPENAI_API_KEY is not configured.");
@@ -212,6 +224,12 @@ async function callOpenAIDirect(options: {
   let systemText = options.systemInstruction || "Você é uma inteligência artificial analista consular e de auditoria documental para migração.";
   if (options.responseMimeType === "application/json") {
     systemText += "\n\nIMPORTANTE: Retorne obrigatoriamente um objeto JSON válido, sem qualquer código extra, tags markdown, introdução ou conclusão.";
+    if (options.responseSchema) {
+      systemText += `\n\nSiga este schema JSON com o máximo rigor possível:\n${JSON.stringify(options.responseSchema)}`;
+    }
+  }
+  if (options.googleSearch) {
+    systemText += "\n\nAVISO DE EXECUÇÃO: mantenha a mesma lógica analítica, responda com cautela e não invente fontes.";
   }
   
   messages.push({
@@ -219,23 +237,60 @@ async function callOpenAIDirect(options: {
     content: systemText
   });
 
-  // 2. Map Gemini formatted option contents to OpenAI visual/text parts
+  const stripDataUrlPrefix = (data: string): string => {
+    if (!data) return "";
+    if (data.includes(";base64,")) {
+      return data.split(";base64,").pop() || "";
+    }
+    return data;
+  };
+
+  const getFileNameForOpenAI = (item: any, mime: string, index: number): string => {
+    const explicitName = item?.name || item?.filename || item?.inlineData?.name || item?.inlineData?.filename;
+    if (explicitName) return explicitName;
+    const extByMime: Record<string, string> = {
+      "application/pdf": "pdf",
+      "text/plain": "txt",
+      "text/csv": "csv",
+      "application/json": "json"
+    };
+    const extension = extByMime[mime] || mime.split("/").pop() || "bin";
+    return `documento-${index + 1}.${extension}`;
+  };
+
+  // 2. Map Gemini formatted option contents to OpenAI visual/text/file parts
   const userContentParts: any[] = [];
   
-  options.contents.forEach(item => {
+  options.contents.forEach((item, index) => {
     if (typeof item === "string") {
       userContentParts.push({ type: "text", text: item });
     } else if (item.text) {
       userContentParts.push({ type: "text", text: item.text });
     } else if (item.inlineData) {
       const mime = item.inlineData.mimeType || "image/jpeg";
-      const base64Content = item.inlineData.data;
+      const base64Content = stripDataUrlPrefix(item.inlineData.data || "");
+      const filename = getFileNameForOpenAI(item, mime, index);
       if (mime.startsWith("image/")) {
         userContentParts.push({
           type: "image_url",
           image_url: {
-            url: `data:${mime};base64,${base64Content}`
+            url: `data:${mime};base64,${base64Content}`,
+            detail: "high"
           }
+        });
+      } else if (mime === "application/pdf" || filename.toLowerCase().endsWith(".pdf")) {
+        userContentParts.push({
+          type: "file",
+          file: {
+            filename,
+            file_data: `data:${mime};base64,${base64Content}`
+          }
+        });
+      } else if (mime.startsWith("text/") || mime === "application/json") {
+        const decodedText = Buffer.from(base64Content, "base64").toString("utf8");
+        userContentParts.push({
+          type: "text",
+          text: `[Arquivo anexado: ${filename} (${mime})]\n${decodedText}`
         });
       } else {
         // If it's a non-image file type like pdf, inline file info with reference
@@ -253,9 +308,9 @@ async function callOpenAIDirect(options: {
   });
 
   const body: any = {
-    model: "gpt-4o", // Premium multimodal high-performance fallback model
+    model: getOpenAIModel(),
     messages,
-    temperature: options.temperature !== undefined ? options.temperature : 0.2
+    temperature: options.temperature !== undefined ? options.temperature : DEFAULT_AI_TEMPERATURE
   };
 
   if (options.responseMimeType === "application/json") {
@@ -273,13 +328,14 @@ async function callOpenAIDirect(options: {
 
   if (!response.ok) {
     const errorDetails = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errorDetails}`);
+    console.log(`[ConsulAI Provider Failover] Secondary AI provider error (${response.status}): ${errorDetails}`);
+    throw new Error(`Erro no provedor secundário de IA (${response.status}).`);
   }
 
   const resultBody = await response.json();
   const output = resultBody.choices?.[0]?.message?.content;
   if (!output) {
-    throw new Error("Invalid or empty response structure from OpenAI Chat completion model.");
+    throw new Error("Resposta vazia ou inválida do provedor secundário de IA.");
   }
 
   return output;
@@ -289,17 +345,10 @@ async function callOpenAIDirect(options: {
  * REST translation layer with the Gemini API using the official @google/genai SDK.
  * Iterates through every key in the GeminiKeyPool before falling back to OpenAI.
  */
-async function callGeminiDirect(options: {
-  contents: any[];
-  systemInstruction?: string;
-  responseMimeType?: string;
-  responseSchema?: any;
-  temperature?: number;
-  googleSearch?: boolean;
-}): Promise<string> {
+async function callAIWithFailover(options: AIRequestOptions): Promise<string> {
   // If no Gemini key at all but OpenAI is available, route immediately
   if (!hasGeminiKey() && hasOpenAIKey()) {
-    console.log("[ConsulAI API Routing] No Gemini key configured. Routing directly to OpenAI...");
+    console.log("[ConsulAI API Routing] Primary AI provider unavailable. Routing to secondary provider...");
     return callOpenAIDirect(options);
   }
 
@@ -313,7 +362,7 @@ async function callGeminiDirect(options: {
 
   const config: any = {};
   if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
-  if (options.temperature !== undefined) config.temperature = options.temperature;
+  config.temperature = options.temperature !== undefined ? options.temperature : DEFAULT_AI_TEMPERATURE;
   if (options.googleSearch) {
     config.tools = [{ googleSearch: {} }];
     // NEVER pass responseMimeType/responseSchema with a tool — unsupported (400 INVALID_ARGUMENT)
@@ -334,7 +383,7 @@ async function callGeminiDirect(options: {
     try {
       console.log(`[ConsulAI KeyPool] Trying Gemini key ${keyHint} (attempt ${attempt + 1}/${totalKeys || 1})`);
       const response = await entry.client.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: getGeminiModel(),
         contents: { parts },
         config
       });
@@ -370,7 +419,7 @@ async function callGeminiDirect(options: {
   // All Gemini keys failed — attempt OpenAI fallback
   console.log(`[ConsulAI Provider Failover] All Gemini keys failed. Last error: ${lastGeminiError}`);
   if (hasOpenAIKey()) {
-    console.log("[ConsulAI Provider Failover] Switching to OpenAI gpt-4o as final fallback...");
+    console.log("[ConsulAI Provider Failover] Switching to secondary AI provider as final fallback...");
     try {
       return await callOpenAIDirect(options);
     } catch (openAiError: any) {
@@ -803,7 +852,7 @@ async function startServer() {
           }
           Não coloque nenhuma introdução ou formatação Markdown no JSON, apenas o JSON puro pronto para parsing.`;
 
-          const rulesText = await callGeminiDirect({
+          const rulesText = await callAIWithFailover({
             contents: [searchPrompt],
             googleSearch: true
           });
@@ -1353,9 +1402,11 @@ Diretrizes de Formatação Limpa:
                   fileMime = "application/pdf";
                 }
                 contentsList.push({
+                  name: file.name,
                   inlineData: {
                     data: cleanBase64,
-                    mimeType: fileMime
+                    mimeType: fileMime,
+                    filename: file.name
                   }
                 });
               }
@@ -1364,7 +1415,7 @@ Diretrizes de Formatação Limpa:
 
           contentsList.push({ text: promptText });
 
-          const responseText = await callGeminiDirect({
+          const responseText = await callAIWithFailover({
             contents: contentsList,
             temperature: 0.2
           });
@@ -2052,7 +2103,7 @@ Rigor Consular Aplicado:
         return res.json({ status: "success", method: "local_mapping", data: resultData });
       }
 
-      console.log(`[ConsulAI Server] Initiating Document OCR and Extraction with Gemini Flash for: ${name} (Is BI/Passport: ${isID})`);
+      console.log(`[ConsulAI Server] Initiating AI document extraction flow for: ${name} (Is BI/Passport: ${isID})`);
 
       if (isID) {
         // BI or Passport extraction schema
@@ -2086,14 +2137,16 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
             cleanBase64 = cleanBase64.split(";base64,").pop() || "";
           }
           contents.push({
+            name,
             inlineData: {
               mimeType: mimeType,
+              filename: name,
               data: cleanBase64
             }
           });
         }
 
-        const responseText = await callGeminiDirect({
+        const responseText = await callAIWithFailover({
           contents: contents,
           systemInstruction,
           responseMimeType: "application/json",
@@ -2111,7 +2164,7 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
         if (!parsedData.checkedDocs) parsedData.checkedDocs = {};
         parsedData.checkedDocs.identity_docs = true;
 
-        return res.json({ status: "success", method: "gemini_ocr_identity", data: parsedData });
+        return res.json({ status: "success", method: "ai_ocr_identity", data: parsedData });
 
       } else {
         // NON-ID Document extraction (e.g., bank statement, job contract, flight ticket)
@@ -2155,14 +2208,16 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
             cleanBase64 = cleanBase64.split(";base64,").pop() || "";
           }
           contents.push({
+            name,
             inlineData: {
               mimeType: mimeType,
+              filename: name,
               data: cleanBase64
             }
           });
         }
 
-        const responseText = await callGeminiDirect({
+        const responseText = await callAIWithFailover({
           contents: contents,
           systemInstruction,
           responseMimeType: "application/json",
@@ -2212,7 +2267,7 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
           parsedData.checkedDocs.invitation_letter = true;
         }
 
-        return res.json({ status: "success", method: "gemini_ocr_analysis", data: parsedData });
+        return res.json({ status: "success", method: "ai_ocr_analysis", data: parsedData });
       }
 
     } catch (error: any) {

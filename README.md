@@ -14,6 +14,9 @@ View your app in AI Studio: https://ai.studio/apps/61f4c758-071f-42e5-993c-fc304
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in `.env` to your Gemini API key
-3. Run the app:
+2. Set `GEMINI_API_KEY` in `.env` to your Gemini API key
+3. Set `OPENAI_API_KEY` in the root `.env` file to enable automatic fallback when Gemini quota is exhausted:
+   `OPENAI_API_KEY="sk-..."`
+4. Optional: override `GEMINI_MODEL` and `OPENAI_MODEL` in `.env` if needed
+5. Run the app:
    `npm run dev`

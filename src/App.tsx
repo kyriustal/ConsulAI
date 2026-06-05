@@ -3591,7 +3591,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             />
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-display font-bold text-base sm:text-xl text-white tracking-tight">ConsulAI Engine</span>
+                <span className="font-display font-bold text-[13px] sm:text-base text-white tracking-tight">ConsulAI Engine</span>
                 <span className="bg-sky-500/10 text-sky-400 text-[9px] sm:text-[10px] uppercase tracking-widest font-mono font-medium px-2 py-0.5 rounded border border-sky-500/20 hidden sm:inline">
                   V1.0 Pro
                 </span>
@@ -3758,7 +3758,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
               alt="Logo" 
               className="w-7 h-7 rounded-lg object-cover" 
             />
-            <span className="font-display font-bold text-white text-sm tracking-tight">ConsulAI Engine</span>
+            <span className="font-display font-bold text-white text-[11px] tracking-tight">ConsulAI Engine</span>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -3928,7 +3928,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* Left Form: Input data */}
-              <div className="lg:col-span-5 bg-[#111827] border border-[#1e293b] rounded-xl p-5 shadow-xl">
+              <div className="ds160-form-shell lg:col-span-5 bg-[#111827] border border-[#1e293b] rounded-xl p-5 shadow-xl">
                 <div className="border-b border-[#1f2937] pb-3.5 mb-4 flex justify-between items-center">
                   <div className="flex items-center space-x-2">
                     <FileText className="w-5 h-5 text-sky-400" />
@@ -3979,7 +3979,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                   </button>
                 </div>
 
-                <form onSubmit={handleEvaluate} className="space-y-4">
+                <form onSubmit={handleEvaluate} className="ds160-applicant-form space-y-4">
                   
                   {/* Modalidade de Análise Selector */}
                   <div className="bg-[#1f2937]/45 border border-[#374151]/80 rounded-xl p-3.5 mb-2 space-y-2.5">
@@ -3989,6 +3989,8 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button
                         type="button"
+                        aria-pressed={formData.analysisType === "perfil"}
+                        data-selected={formData.analysisType === "perfil" ? "true" : "false"}
                         onClick={() => setFormData(p => ({ ...p, analysisType: "perfil" }))}
                         className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
                           formData.analysisType === "perfil"
@@ -4011,6 +4013,8 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
 
                       <button
                         type="button"
+                        aria-pressed={formData.analysisType === "processo" || !formData.analysisType}
+                        data-selected={formData.analysisType === "processo" || !formData.analysisType ? "true" : "false"}
                         onClick={() => setFormData(p => ({ ...p, analysisType: "processo" }))}
                         className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
                           formData.analysisType === "processo" || !formData.analysisType
@@ -4512,8 +4516,9 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                           <button
                             key={item.value}
                             type="button"
+                            data-selected={active ? "true" : "false"}
                             onClick={() => toggleTravelHistory(item.value)}
-                            className={`px-2.5 py-1 rounded text-xs select-none border font-sans transition-all duration-150 ${
+                            className={`migration-country-option px-2.5 py-1 rounded text-xs select-none border font-sans transition-all duration-150 ${
                               active 
                                 ? "bg-sky-500/25 border-sky-400 text-sky-300"
                                 : "bg-[#1f2937] border-[#374151] text-slate-400 hover:text-white"
