@@ -16,6 +16,10 @@ dotenv.config();
 // ---------------------------------------------------------------------------
 const KEY_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 const DEFAULT_AI_TEMPERATURE = 0.2;
+const AI_SEARCH_TIMEOUT_MS = Number(process.env.AI_SEARCH_TIMEOUT_MS) || 7000;
+const AI_OPINION_TIMEOUT_MS = Number(process.env.AI_OPINION_TIMEOUT_MS) || 22000;
+const AI_OCR_TIMEOUT_MS = Number(process.env.AI_OCR_TIMEOUT_MS) || 40000;
+const OPENAI_FETCH_TIMEOUT_MS = Number(process.env.OPENAI_FETCH_TIMEOUT_MS) || 45000;
 
 interface GeminiKeyEntry {
   key: string;
@@ -175,6 +179,17 @@ function getOpenAIModel(): string {
   return process.env.OPENAI_MODEL || "gpt-4o";
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`${label} excedeu ${Math.round(timeoutMs / 1000)}s e foi interrompida para evitar timeout HTTP.`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutHandle));
+}
+
 /**
  * Helper to safely extract and parse JSON from a response string, even if it contains Markdown wrappers or extra conversational text.
  */
@@ -317,14 +332,22 @@ async function callOpenAIDirect(options: AIRequestOptions): Promise<string> {
     body.response_format = { type: "json_object" };
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENAI_FETCH_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errorDetails = await response.text();
@@ -852,10 +875,14 @@ async function startServer() {
           }
           Não coloque nenhuma introdução ou formatação Markdown no JSON, apenas o JSON puro pronto para parsing.`;
 
-          const rulesText = await callAIWithFailover({
-            contents: [searchPrompt],
-            googleSearch: true
-          });
+          const rulesText = await withTimeout(
+            callAIWithFailover({
+              contents: [searchPrompt],
+              googleSearch: true
+            }),
+            AI_SEARCH_TIMEOUT_MS,
+            "Pesquisa dinâmica de regras consulares"
+          );
 
           if (rulesText) {
             const parsedRules = parseJsonSafely(rulesText);
@@ -1415,10 +1442,14 @@ Diretrizes de Formatação Limpa:
 
           contentsList.push({ text: promptText });
 
-          const responseText = await callAIWithFailover({
-            contents: contentsList,
-            temperature: 0.2
-          });
+          const responseText = await withTimeout(
+            callAIWithFailover({
+              contents: contentsList,
+              temperature: 0.2
+            }),
+            AI_OPINION_TIMEOUT_MS,
+            "Parecer consular por IA"
+          );
 
           aiOpinion = responseText || "";
         } catch (error: any) {
@@ -2146,12 +2177,16 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
           });
         }
 
-        const responseText = await callAIWithFailover({
-          contents: contents,
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: schema
-        });
+        const responseText = await withTimeout(
+          callAIWithFailover({
+            contents: contents,
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: schema
+          }),
+          AI_OCR_TIMEOUT_MS,
+          "OCR inteligente de documento de identidade"
+        );
 
         const ocrResult = parseJsonSafely(responseText || "{}");
         
@@ -2217,12 +2252,16 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
           });
         }
 
-        const responseText = await callAIWithFailover({
-          contents: contents,
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: schema
-        });
+        const responseText = await withTimeout(
+          callAIWithFailover({
+            contents: contents,
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: schema
+          }),
+          AI_OCR_TIMEOUT_MS,
+          "OCR inteligente de documento complementar"
+        );
 
         const ocrResult = parseJsonSafely(responseText || "{}");
         

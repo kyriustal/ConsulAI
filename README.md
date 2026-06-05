@@ -18,5 +18,6 @@ View your app in AI Studio: https://ai.studio/apps/61f4c758-071f-42e5-993c-fc304
 3. Set `OPENAI_API_KEY` in the root `.env` file to enable automatic fallback when Gemini quota is exhausted:
    `OPENAI_API_KEY="sk-..."`
 4. Optional: override `GEMINI_MODEL` and `OPENAI_MODEL` in `.env` if needed
-5. Run the app:
+5. Optional: tune AI timeout guards (`AI_SEARCH_TIMEOUT_MS`, `AI_OPINION_TIMEOUT_MS`, `AI_OCR_TIMEOUT_MS`) if your host allows longer requests
+6. Run the app:
    `npm run dev`
