@@ -3572,7 +3572,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         <div className="max-w-7xl mx-auto flex items-center justify-between">
 
           {/* Logo + Brand */}
-          <div className="flex items-center space-x-3">
+          <div className="app-brand-lockup flex items-center space-x-3">
             {/* Hamburger — mobile only */}
             <button
               id="mobile-menu-btn"
@@ -3628,7 +3628,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                    activeTab === "history" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                 }`}
               >
-                <History className="w-3.5 h-3.5" /><span>Histórico ({historyTrail.length})</span>
+                <History className="w-3.5 h-3.5" /><span>Histórico</span>
               </button>
               {currentUser && (
                 <button
@@ -3649,7 +3649,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                     activeTab === "team" ? "bg-sky-100 text-sky-800" : "text-slate-300 hover:bg-sky-500/10 hover:text-sky-400"
                   }`}
                 >
-                  <Users className="w-3.5 h-3.5" /><span>Equipa ({teamMembers.length})</span>
+                  <Users className="w-3.5 h-3.5" /><span>Equipa</span>
                 </button>
               )}
               <button
@@ -3793,7 +3793,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
           {([
             { id: "simulator", icon: <Activity className="w-4 h-4" />, label: "Painel de Avaliação" },
             { id: "rules",     icon: <BookOpen className="w-4 h-4" />, label: "Base Legal Jurídica" },
-            { id: "history",   icon: <History className="w-4 h-4" />,  label: `Histórico (${historyTrail.length})` },
+            { id: "history",   icon: <History className="w-4 h-4" />,  label: "Histórico" },
           ] as { id: typeof activeTab; icon: React.ReactNode; label: string }[]).map(item => (
             <button
               key={item.id}
@@ -3826,7 +3826,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                 activeTab === "team" ? "bg-sky-500/15 text-sky-400 border border-sky-500/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
               }`}
             >
-              <Users className="w-4 h-4" /><span>Equipa ({teamMembers.length})</span>
+              <Users className="w-4 h-4" /><span>Equipa</span>
             </button>
           )}
 

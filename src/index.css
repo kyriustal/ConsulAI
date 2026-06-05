@@ -1204,3 +1204,9 @@ html.light .migration-country-option[data-selected="true"] span {
   border-color: #bfdbfe !important;
   color: #020617 !important;
 }
+
+@media (min-width: 768px) {
+  .app-brand-lockup {
+    margin-right: 7% !important;
+  }
+}
