@@ -367,14 +367,6 @@ body {
   color: #ffffff !important;
 }
 
-/* Custom style for the registration disclaimer notice (owner access warning) */
-.consul-owner-notice p {
-  color: #e2e8f0 !important; /* Default light slate color for readability on dark backgrounds */
-}
-.light .consul-owner-notice p {
-  color: #000000 !important; /* Black in light mode */
-}
-
 /* DS-160 inspired visual skin for the ConsulAI applicant form.
    Content and field behavior remain owned by the React form. */
 .ds160-form-shell {
@@ -1208,5 +1200,121 @@ html.light .migration-country-option[data-selected="true"] span {
 @media (min-width: 768px) {
   .app-brand-lockup {
     margin-right: 7% !important;
+  }
+}
+
+/* Mobile menu icon follows the active theme. */
+html.light #mobile-menu-btn,
+html.light #mobile-menu-btn svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+html.light #mobile-menu-btn:hover,
+html.light #mobile-menu-btn:hover svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+html.dark #mobile-menu-btn,
+html.dark #mobile-menu-btn svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+html.dark #mobile-menu-btn:hover,
+html.dark #mobile-menu-btn:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Form layout guardrails: keep labels, fields and generated text from merging
+   across desktop, tablet and mobile widths. */
+main,
+main *,
+.ds160-form-shell,
+.ds160-form-shell *,
+.ds160-applicant-form,
+.ds160-applicant-form * {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+main form,
+.ds160-applicant-form {
+  width: 100%;
+}
+
+main label,
+main input,
+main select,
+main textarea,
+main button,
+main p,
+main li,
+main span,
+.markdown-body,
+.markdown-body * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+main input,
+main select,
+main textarea {
+  display: block;
+  min-width: 0;
+}
+
+main label {
+  line-height: 1.35 !important;
+  white-space: normal !important;
+}
+
+main .grid > * {
+  min-width: 0;
+}
+
+main .flex {
+  min-width: 0;
+}
+
+main .flex span,
+main .flex p,
+main .flex label {
+  min-width: 0;
+}
+
+.markdown-body {
+  overflow-x: auto;
+}
+
+.markdown-body pre,
+.markdown-body code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding-left: 0.875rem !important;
+    padding-right: 0.875rem !important;
+  }
+
+  main .grid.grid-cols-2,
+  main .grid.grid-cols-3,
+  main .grid.grid-cols-4,
+  main .grid.grid-cols-5 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main .flex:not(header .flex):not(aside .flex) {
+    flex-wrap: wrap;
+  }
+
+  main button {
+    white-space: normal;
+    line-height: 1.25;
   }
 }

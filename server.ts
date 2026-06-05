@@ -1270,10 +1270,20 @@ async function startServer() {
 
           const isPerfilMode = analysisType === "perfil";
           const modeTitle = isPerfilMode ? "ANÁLISE DE PERFIL (CONSIDERA APENAS FORMULÁRIO, EXCLUINDO QUALQUER SUPORTE OU ANÁLISE DE DOCUMENTOS)" : "ANÁLISE DE PROCESSO (CONSIDERA FORMULÁRIO JUNTO AOS DOCUMENTOS ANEXADOS EM DETALHES)";
+          const visaConsistencyGuard = isTourism
+            ? `REGRA CRÍTICA DE COERÊNCIA DA MODALIDADE:
+1. A modalidade selecionada é turismo/curta duração: "${visaType}".
+2. Não julgue este caso como Procura de Trabalho, visto de trabalho, residência laboral, contrato de trabalho no destino ou promessa de emprego no país de destino.
+3. Qualquer vínculo laboral declarado deve ser analisado apenas como prova de arraigo, renda e intenção de regresso ao país de origem.
+4. Se houver referência a trabalho, contrato ou empregador, deixe claro se se trata de vínculo na origem para turismo ou de indício concreto de intenção laboral no destino. Sem prova concreta de intenção laboral no destino, não converta a classe do visto.`
+            : `REGRA CRÍTICA DE COERÊNCIA DA MODALIDADE:
+1. Julgue estritamente a modalidade selecionada: "${visaType}".
+2. Não substitua, por inferência, o tipo de visto escolhido por outra categoria.`;
 
           const promptText = `Você é um analista e oficial consular altamente rigoroso da embaixada de ${activeRules.country}.
 
 MODALIDADE DE ANÁLISE SELECIONADA: **${modeTitle}**
+${visaConsistencyGuard}
 ${isPerfilMode ? `
 REGRAS CRÍTICAS DA MODALIDADE ANÁLISE DE PERFIL:
 1. Esta é uma Análise de Perfil. Os documentos físicos anexados, assinaturas, carimbos, rasuras e checklists NÃO são considerados e NÃO devem ser de forma alguma analisados, criticados ou mencionados nos pareceres consulares (Seções I, II, III e IV). Ignore-os inteiramente.

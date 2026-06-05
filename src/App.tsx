@@ -751,6 +751,9 @@ const ALL_WORLD_COUNTRIES = [
 // Static profiles for quick testing/simulation - removed for production UI (data kept for history)
 const mockCaseTemplates: any[] = [];
 
+const SESSION_BACKGROUND_LIMIT_MS = 30 * 60 * 1000;
+const SESSION_BACKGROUND_STARTED_AT_KEY = "consulai_background_started_at";
+
 export interface AppUser {
   uid: string;
   email: string;
@@ -1014,7 +1017,7 @@ export default function App() {
     passportNumber: "",
     age: 0,
     country: "Portugal",
-    visaType: "Visto de Procura de Trabalho",
+    visaType: "Visto de Estada Temporária de Turismo (Schengen C)",
     monthlyIncome: 0,
     bankBalance: 0,
     jobType: "",
@@ -1107,7 +1110,7 @@ export default function App() {
       setDeniedApplicantName("Maria Clara");
       setDeniedCountry("Portugal");
       setDeniedVisaType("Visto de Turismo");
-      setDeniedReasonText("Foram detetadas inconsistências sobre a sua intenção de abandonar o território Schengen. O vínculo laboral apresentado não pôde ser verificado junto do empregador declarado.");
+      setDeniedReasonText("Foram detetadas inconsistências sobre a sua intenção de abandonar o território Schengen. Embora a candidatura tenha sido apresentada como Visto de Turismo, o despacho analisou pressupostos próprios de Procura de Trabalho e tratou o vínculo laboral como requisito central da modalidade.");
       
       const files = [
         { name: "Passaporte_Maria_Clara.pdf", mimeType: "application/pdf", size: 1887436, source: "local" as const, category: "passport" },
@@ -1158,6 +1161,30 @@ export default function App() {
       const hasRefusalDoc = refusalDocumentFiles.length > 0;
       
       const noteTextLower = (deniedReasonText || "").toLowerCase();
+      const deniedVisaTypeLower = (deniedVisaType || "").toLowerCase();
+      const isPortugalTourismRefusal =
+        deniedCountry === "Portugal" &&
+        (deniedVisaTypeLower.includes("turismo") ||
+          deniedVisaTypeLower.includes("schengen") ||
+          deniedVisaTypeLower.includes("curta"));
+      const refusalJudgedAsWorkSearch =
+        noteTextLower.includes("procura de trabalho") ||
+        noteTextLower.includes("visto de trabalho") ||
+        noteTextLower.includes("contrato de trabalho do destino") ||
+        noteTextLower.includes("emprego no destino");
+
+      if (isPortugalTourismRefusal && refusalJudgedAsWorkSearch) {
+        score += 12;
+        discrepancies.unshift(
+          "Discrepância crítica de enquadramento: o requerente aplicou para Visto de Turismo/Schengen C de Portugal, mas o despacho avaliou pressupostos de Procura de Trabalho ou trabalho no destino. A reanálise deve separar vínculo laboral na origem, usado como prova de retorno, de contrato de trabalho no país de destino, que não é requisito do turismo."
+        );
+        legalBasis.unshift(
+          "Regulamento (CE) n.º 810/2009 - Código de Vistos Schengen: a análise deve corresponder à finalidade declarada de curta duração/turismo"
+        );
+        corrections.unshift(
+          "Na reclamação/recurso, abrir um ponto preliminar de erro de enquadramento da modalidade: turismo Schengen C não pode ser indeferido por ausência de requisitos próprios de Procura de Trabalho, salvo prova concreta de intenção laboral no destino."
+        );
+      }
       
       // Analyze text of refusal mapping to common categories
       if (noteTextLower.includes("subsist") || noteTextLower.includes("financeiro") || noteTextLower.includes("meios")) {
@@ -1269,6 +1296,7 @@ Amparados nos regulamentos Schengen, identificamos uma falha material no julgame
       else if (selectedDeniedTemplate === "turismo_port" && deniedApplicantName === "Maria Clara") {
         score = 74;
         discrepancies = [
+          "AUDIT-ID #10242 [Erro de Enquadramento da Modalidade]: O requerente aplicou para turismo Schengen C em Portugal, mas a decisão consular deslocou o crivo para pressupostos de Procura de Trabalho. O vínculo laboral apresentado deve ser lido como prova de retorno ao país de origem, não como contrato ou promessa de emprego no destino.",
           "AUDIT-ID #10243 [Inconsistência da Declaração Laboral]: O Consulado categorizou o emprego como 'não verificável e de existência duvidosa' devido à ausência de número de telefone comercial listado em painéis públicos georreferenciados (Google Business) associados à firma.",
           "AUDIT-ID #10244 [Fragilidade das Âncoras Civis]: O dossiê original falhou em documentar laços estáveis com a comarca de residência (Home Ties), limitando-se a apresentar declaração verbal unilateral sem certidões associadas."
         ];
@@ -1302,6 +1330,7 @@ O rastreio dos documentos identificou as causas de reprovação sistêmica:
 #### 2. ANÁLISE FORENSE DE CONTRADIÇÕES E BRECHAS PROCESSUAIS
 O Consulado surpreendentemente desconsiderou elementos robustos:
 *   **Desrespeito à Matrícula do Registo Comercial**: A empresa empregadora é registada ativamente com número comercial autêntico. A incapacidade operacional do analista consular de validar o documento fiscal público nacional não pode penalizar o requerente com presunção de má-fé documental.
+*   **Erro de Modalidade do Crivo Consular**: A candidatura foi apresentada como **Visto de Curta Duração / Turismo (Schengen C)**. Portanto, a declaração laboral deve servir para demonstrar arraigo e intenção de regresso, não para exigir contrato, promessa de emprego ou requisitos de **Procura de Trabalho** em Portugal.
 *   **Garantia de Meios Líquidos Próprios**: A requerente carregou cartões de crédito internacionais funcionais com limites auditáveis e extratos com saldo amplamente superior às tabelas fixas estabelecidas no Artigo 2º da Portaria n.º 1563/2007 de Portugal (75€ por entrada mais 40€ por dia de permanência).
 
 ---
@@ -2926,15 +2955,18 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
     }
   };
 
-  // Sign out
-  const handleLogout = async () => {
+  const clearAuthenticatedSession = async (expiredMessage?: string) => {
     localStorage.removeItem("consulai_user");
+    localStorage.removeItem(SESSION_BACKGROUND_STARTED_AT_KEY);
     // Force dark mode immediately to prevent any light mode flash on the login screen
     if (typeof document !== "undefined") {
       document.documentElement.classList.add("dark");
       document.documentElement.classList.remove("light");
     }
     setCurrentUser(null);
+    setLoginTab("login");
+    setRegisterSuccessMessage("");
+    setLoginError(expiredMessage || null);
     setActiveTab("simulator");
     try {
       await googleSignOut();
@@ -2942,6 +2974,74 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
       console.error("Erro no signout", e);
     }
   };
+
+  // Sign out
+  const handleLogout = async () => {
+    await clearAuthenticatedSession();
+  };
+
+  useEffect(() => {
+    if (!currentUser) {
+      localStorage.removeItem(SESSION_BACKGROUND_STARTED_AT_KEY);
+      return;
+    }
+
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const expireSession = () => {
+      void clearAuthenticatedSession("Sessão Expirada: por segurança, inicie sessão novamente.");
+    };
+
+    const clearExpiryTimer = () => {
+      if (expiryTimer) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
+      }
+    };
+
+    const scheduleBackgroundExpiry = (startedAt: number) => {
+      clearExpiryTimer();
+      const elapsed = Date.now() - startedAt;
+      const remaining = SESSION_BACKGROUND_LIMIT_MS - elapsed;
+      if (remaining <= 0) {
+        expireSession();
+        return;
+      }
+      expiryTimer = setTimeout(expireSession, remaining);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        const startedAt = Date.now();
+        localStorage.setItem(SESSION_BACKGROUND_STARTED_AT_KEY, String(startedAt));
+        scheduleBackgroundExpiry(startedAt);
+        return;
+      }
+
+      const startedAt = Number(localStorage.getItem(SESSION_BACKGROUND_STARTED_AT_KEY) || 0);
+      localStorage.removeItem(SESSION_BACKGROUND_STARTED_AT_KEY);
+      clearExpiryTimer();
+
+      if (startedAt && Date.now() - startedAt >= SESSION_BACKGROUND_LIMIT_MS) {
+        expireSession();
+      }
+    };
+
+    const existingStartedAt = Number(localStorage.getItem(SESSION_BACKGROUND_STARTED_AT_KEY) || 0);
+    if (document.hidden) {
+      scheduleBackgroundExpiry(existingStartedAt || Date.now());
+    } else if (existingStartedAt && Date.now() - existingStartedAt >= SESSION_BACKGROUND_LIMIT_MS) {
+      expireSession();
+    } else {
+      localStorage.removeItem(SESSION_BACKGROUND_STARTED_AT_KEY);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      clearExpiryTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [currentUser, setActiveTab]);
 
   // Add team member (Unlimited, synchronizing Supabase)
   const handleAddTeamMember = async (e: React.FormEvent) => {
@@ -3537,12 +3637,6 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                       </div>
                     </div>
 
-                    <div className="p-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-500/10 rounded-lg text-left consul-owner-notice">
-                      <p className="text-[11px] leading-relaxed font-sans text-black dark:text-slate-200">
-                        🔑 <strong className="text-black dark:text-white">Acesso de Proprietário:</strong> Todas as novas contas registadas por esta via iniciam como <strong className="text-black dark:text-white">Proprietário (Controlo Geral)</strong>. Poderá adicionar colaboradores e gerir os respetivos cargos no painel interno.
-                      </p>
-                    </div>
-
                     <button
                       type="submit"
                       disabled={isLoggingIn}
@@ -3943,7 +4037,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                         passportNumber: "",
                         age: 0,
                         country: "Portugal",
-                        visaType: "Visto de Procura de Trabalho",
+                        visaType: "Visto de Estada Temporária de Turismo (Schengen C)",
                         monthlyIncome: 0,
                         bankBalance: 0,
                         jobType: "",
