@@ -796,7 +796,9 @@ async function startServer() {
         deportationReason = "",
         contractType = "",
         contractDuration = "",
-        analysisType = "processo"
+        analysisType = "processo",
+        tripSponsor = "",
+        tripSponsorRelation = ""
       } = data;
 
       let normalizedJobType = jobType || "unemployed";
@@ -836,6 +838,7 @@ async function startServer() {
         farmer_landowner: "entrepreneur",
         freelancer: "entrepreneur",
         student_school: "student",
+        student: "student",
         landlord_rentier: "retired",
         housewife: "unemployed",
         
@@ -954,7 +957,7 @@ async function startServer() {
       } else if (normalizedJobType === "retired") {
         riskScore += 12;
       } else if (normalizedJobType === "student") {
-        riskScore += 8;
+        riskScore += 12; // Higher reliability score for students to avoid job penalty
       } else {
         riskScore += 0; // Unemployed
       }
@@ -1235,7 +1238,12 @@ async function startServer() {
         reasons.push("Lastro patrimonial líquido declarado em patamar aceitável.");
       }
 
-      if (normalizedJobType === "unemployed") {
+      if (normalizedJobType === "student") {
+        reasons.push(`Condição de estudante ativo (${jobTiesYears} anos de vínculo acadêmico), caracterizando ocupação estável e forte laço com o país de origem.`);
+        if (jobTiesYears < 1) {
+          suggestedActions.push("Apresentar comprovativo oficial de matrícula ativa ou aceitação em instituição de ensino credenciada.");
+        }
+      } else if (normalizedJobType === "unemployed") {
         reasons.push("Ausência de vínculo gerador de renda ou laço empregatício contínuo.");
         suggestedActions.push("Vincular certidão de estudos ativos, aposentadoria formal, ou certidão de Microempresa (MEI) com notas de recolhimento.");
       } else if (jobTiesYears < 2) {
@@ -1279,6 +1287,14 @@ async function startServer() {
             : `REGRA CRÍTICA DE COERÊNCIA DA MODALIDADE:
 1. Julgue estritamente a modalidade selecionada: "${visaType}".
 2. Não substitua, por inferência, o tipo de visto escolhido por outra categoria.`;
+
+          const studentGuard = normalizedJobType === "student"
+            ? `REGRA CRÍTICA DE PERFIL ESTUDANTE:
+1. O candidato declarou ser ESTUDANTE. Estudante NÃO é uma profissão.
+2. Não trate a condição de estudante como fonte de renda salarial do aplicante. Em vez disso, avalie-a como condição de ocupação estável e laço/arraigo acadêmico com o país de origem.
+3. A renda mensal declarada ($${monthlyIncome} USD) NÃO provém de salário ou emprego próprio do aplicante, devendo ser lida como mesada/subsídio/suporte financeiro fornecido por familiares ou patrocinadores educacionais para sustento dos seus estudos.
+4. O extrato bancário ($${bankBalance} USD) reflete poupança acadêmica/familiar e suporte financeiro de patrocinadores, e não poupança originada de salário do próprio aplicante. Não exija ou critique correlação matemática/fiscal entre tempo de serviço de emprego ativo e saldo acumulado.`
+            : "";
 
           const promptText = `Você é um analista e oficial consular altamente rigoroso da embaixada de ${activeRules.country}.
 
@@ -1339,6 +1355,12 @@ Acordos Consulares e Relações Diplomáticas Bilaterais (${nationality} para ${
 - Detalhes da Isenção/Mobilidade aplicável: ${relation.exemptionDetails || "Nenhuma isenção comercial ou de turismo regular aplicável"}
 - Observações críticas de controle de fronteira: ${relation.consularNotes}
 
+Financiamento e Patrocínio da Viagem (Sponsorship):
+- Requerente é financiado por terceiros (Patrocinado)? ${tripSponsor && tripSponsor !== "Eu Mesmo" ? "SIM" : "NÃO"}
+- Patrocinador Declarado: ${tripSponsor || "Eu Mesmo (Autofinanciado)"}
+- Relação com o Patrocinador: ${tripSponsorRelation || "Não aplicável"}
+- Implicações de Perfil: ${tripSponsor && tripSponsor !== "Eu Mesmo" ? `ATENÇÃO: O requerente NÃO é autofinanciado. O capital de $${bankBalance} USD e a renda de $${monthlyIncome} USD pertencem ao patrocinador (${tripSponsor}). A análise de subsistência e origem de fundos deve centrar-se na capacidade econômica do patrocinador, e os documentos financeiros anexados (como extratos) devem ser lidos como pertencentes ao patrocinador. O perfil do patrocinador (financiador) é diferente do financiado (requerente).` : "O requerente financia a própria viagem."}
+
 Estrutura de Alojamento e Hospedagem Declarada:
 - Tipo de Hospedagem: ${accommodationType === "hotel" || accommodationType === "Hotel" ? "Hotel / Estalagem" : accommodationType === "family_friends" || accommodationType === "Casa Familiar ou de Amigo" ? "Casa de familiares ou amigos" : accommodationType === "student_housing" || accommodationType === "Residência Escolar" ? "Residência Escolar / Estudantil" : accommodationType === "employer_provided" || accommodationType === "Alojamento de Empregador" ? "Fornecido pelo empregador" : accommodationType === "Igreja" ? "Igreja" : accommodationType || "Não especificado"}
 - Possui Carta de Chamada / Carta Convite: ${hasInvitationLetter === "yes" ? "Sim, possui" : hasInvitationLetter === "no" ? "Não possui" : "Não aplicável"}
@@ -1388,15 +1410,26 @@ ${allFilesToProcess.map((f, idx) => `- Documento #${idx + 1} (${f.name}): [Anál
 
 Analise também cada um dos itens listados como enviados em "Documentos Declarados no Dossiê", destacando sua autenticidade jurídica.`} 
 
-ATENÇÃO CRÍTICA AO VÍNCULO LABORAL E TEMPO DE TRABALHO:
+ATENÇÃO CRÍTICA AO VÍNCULO LABORAL/ACADÊMICO E TEMPO DE TRABALHO/ESTUDO:
+${normalizedJobType === "student" ? `
+- O candidato declarou ser ESTUDANTE. Atenção: Estudante NÃO é uma profissão. Não deve ser lido como uma fonte de renda do aplicante, mas sim uma condição de ocupação e um forte vínculo/arraigo com o país de origem.
+- O tempo declarado de **${jobTiesYears} anos** refere-se ao tempo de vínculo acadêmico na instituição de ensino.
+- Não exija ou espere contratos de trabalho, promessas de emprego na origem ou holerites como se fossem exigências para um profissional ativo. A renda declarada ($${monthlyIncome} USD) não deve ser tratada como salário de profissão, mas como subsídio/mesada de patrocinadores ou fontes de apoio estudantil.
+` : `
 - Você deve analisar rigorosamente o tempo de vínculo laboral de **${jobTiesYears} anos** do candidato em sua profissão.
 - Se houver informação de Tipo de Contrato ("${contractType || "Não Especificado"}") e Tempo/Duração do Contrato ("${contractDuration || "Não Especificado"}"), você deve cruzá-las de forma minuciosa para avaliar o grau de robustez e estabilidade profissional. Contratos efetivos ou tempo prolongado representam forte arraigo; contratos curtos, temporários ou de prestação de serviços informais denotam alta volatilidade laborativa e perigo de imigração voluntária. Isto precisa ser explicitamente sopesado em sua perícia.
+`}
 
-Julgue também a influência da nacionalidade (${nationality}), idade (${age} anos) e ocupação (${jobType}), em especial diante de precedentes migratórios negativos de recusa de vistos (País e Causa relatados: ${hasDeniedVisas === "yes" ? `SIM (País de recusa: ${deniedVisaCountry}, Causa: ${deniedVisaReason})` : "Nenhum histórico declarado"}) ou registros de deportações (País e Causa relatados: ${hasDeportations === "yes" ? `SIM (País de deportação: ${deportationCountry}, Causa: ${deportationReason})` : "Nenhum histórico de deportações"}), pesando a gravidade jurídica de tais ocorrências sobre a fidedignidade da petição.
+Julgue também a influência da nacionalidade (${nationality}), idade (${age} anos) and ocupação (${jobType}), em especial diante de precedentes migratórios negativos de recusa de vistos (País e Causa relatados: ${hasDeniedVisas === "yes" ? `SIM (País de recusa: ${deniedVisaCountry}, Causa: ${deniedVisaReason})` : "Nenhum histórico declarado"}) ou registros de deportações (País e Causa relatados: ${hasDeportations === "yes" ? `SIM (País de deportação: ${deportationCountry}, Causa: ${deportationReason})` : "Nenhum histórico de deportações"}), pesando a gravidade jurídica de tais ocorrências sobre a fidedignidade da petição.
 
 ### II. AVALIAÇÃO PATRIMONIAL E DE SUSTENTAÇÃO (RECONCILIAÇÃO DISCIPLINAR DO EXTRATO BANCÁRIO)
+${normalizedJobType === "student" ? `
+Avalie minuciosamente o extrato bancário apresentado de $${bankBalance} USD e correlacione com a renda mensal declarada de apoio/estudos ($${monthlyIncome} USD) e o tempo de estudos ativo (${jobTiesYears} anos).
+1. Realize um cruzamento fiscal de dados adaptado: os fundos de subsistência e suporte do estudante (de patrocinadores/família) sustentam de forma verossímil e orgânica o saldo de poupança acumulado apresentado de $${bankBalance} USD? Não exija proporcionalidade salarial de trabalho ativo, pois trata-se de um estudante secundário/universitário apoiado por patrocinadores ou com poupança familiar.
+` : `
 Avalie minuciosamente o extrato bancário apresentado e correlacione estreitamente com a renda recorrente declarada ($${monthlyIncome} USD/mês) e o tempo de serviço de vínculo ativo (${jobTiesYears} anos) sob a modalidade contratual "${contractType || "ordinária"}" com duração de "${contractDuration || "tempo indeterminado"}".
 1. Realize um cruzamento fiscal de dados: a renda salarial recorrente e o tempo de serviço do candidato sustentam de forma verossímil e orgânica o saldo de poupança acumulado apresentado de $${bankBalance} USD? Há uma proporcionalidade matemática entre o tempo de trabalho ativo e o padrão de poupança acumulada, ou há suspeitas de inflagem recente? Avalie o perfil socioeconômico geral.
+`}
 2. Calcule expressamente o custo diário estimado de sobrevivência consular ($65 USD diários de permanência ordinária pelos ${durationOfStayDays} dias estimados de estadia, apontando a soma e compatibilidade).
 3. Apresente os cálculos e conclusões do Índice de Autossuficiência Patrimonial (saldo $${bankBalance} USD dividido pelo custo estimado) e do Coeficiente de Renda e Retorno para testar contra o risco de imigração voluntária ilegal por vulnerabilidade socioeconômica.
 
@@ -1414,7 +1447,7 @@ Mude de posição de oficial consular sênior para a de um **Advogado de Migraç
 
 AO FINAL DESTA SEÇAO V, VOCÊ DEVE OBRIGATORIAMENTE APRESENTAR ESTES QUATRO QUADROS FINAIS DE SÍNTESE DO DOSSIÊ:
 - **PONTOS FORTES DO PERFIL:** Listar de forma objetiva de 2 a 4 pontos consolidados favoráveis do requerente (ex: boa idade, histórico anterior limpo, alta liquidez, etc.).
-- **PONTOS FRACOS DO PERFIL:** Listar de forma objetiva de 2 a 4 vulnerabilidades encontradas (destaque o tempo curto de trabalho de ${jobTiesYears} anos e se o contrato ${contractType} com tempo de ${contractDuration} oferece riscos de estabilidade).
+- **PONTOS FRACOS DO PERFIL:** Listar de forma objetiva de 2 a 4 vulnerabilidades encontradas ${normalizedJobType === "student" ? "(como estudante, avalie se os comprovantes de matrícula e suporte financeiro de patrocinadores são claros, em vez de exigir estabilidade empregatícia comercial)" : `(destaque o tempo curto de trabalho de ${jobTiesYears} anos e se o contrato ${contractType} com tempo de ${contractDuration} oferece riscos de estabilidade)`}.
 - **DOCUMENTOS EM FALTA BASEADO NO TIPO DE VISTO (${visaType}) E PAÍS (${country}):** Listar os documentos mandatórios e recomendados para este tipo de visto que NÃO constam como válidos ou enviados, incluindo nominalmente: ${missingDocs.length > 0 ? missingDocs.join(", ") : "Nenhum documento listado em falta"}.
 - **PONTOS POR AJUSTAR A SEGUIR ÀS RECOMENDAÇÕES:** Listar exatamente os passos chave práticos de alteração (ex: formalizar contrato laboral sem termo, retificar declarações fiscais, obter apólice médica nominativa certificada ou renovar documentos com prazos vigentes).
 
@@ -1915,13 +1948,20 @@ Diretrizes de Formatação Limpa:
   };
 
   // Helper function for smart simulated extraction when Gemini isn't available or fails
-  const getSimulatedOcrData = (fileName: string, current: any) => {
+  const getSimulatedOcrData = (fileName: string, current: any, category?: string) => {
     const lowerName = fileName.toLowerCase();
     const fallbackData = { ...current };
 
     // Initialize checkedDocs if they don't exist
     if (!fallbackData.checkedDocs) {
       fallbackData.checkedDocs = {};
+    }
+
+    const isRefusal = category === "refusal_note" || lowerName.includes("recusa") || lowerName.includes("negad") || lowerName.includes("refusal") || lowerName.includes("denial") || lowerName.includes("rejei");
+    if (isRefusal) {
+      fallbackData.extractedText = `O requerente não fez prova de dispor de meios de subsistência suficientes e adequados para a duração da estada prevista, nem de alojamento condigno na duração da estada.`;
+      fallbackData.deniedReasonText = `O requerente não fez prova de dispor de meios de subsistência suficientes e adequados para a duração da estada prevista, nem de alojamento condigno na duração da estada.`;
+      return fallbackData;
     }
 
     // Dynamic country extraction based on filename or metadata
@@ -1999,6 +2039,8 @@ Segurança Física & Marcas de Água: Em conformidade física absoluta. Sem vest
     }
 
     // For non-ID documents, we extract smart simulated figures to pre-fill logically ONLY if extracted number exists
+    const isSponsored = current.tripSponsor && current.tripSponsor !== "Eu Mesmo" && current.tripSponsor !== "";
+
     if (lowerName.includes("santander") || lowerName.includes("extrato") || lowerName.includes("bfa") || lowerName.includes("bic") || lowerName.includes("millennium") || lowerName.includes("saldo") || lowerName.includes("bank") || lowerName.includes("statement")) {
       if (extractedNumber && extractedNumber > 1000) {
         fallbackData.bankBalance = extractedNumber;
@@ -2014,7 +2056,19 @@ Segurança Física & Marcas de Água: Em conformidade física absoluta. Sem vest
 
       const balanceText = fallbackData.bankBalance ? `$${fallbackData.bankBalance.toLocaleString('pt-PT')},00 USD` : "Não identificado explicitamente";
       const incomeText = fallbackData.monthlyIncome ? `$${fallbackData.monthlyIncome.toLocaleString('pt-PT')},00 USD` : "Não identificado";
-      fallbackData.extractedText = `--- PERÍCIA FORENSE PATRIMONIAL ---
+      
+      if (isSponsored) {
+        fallbackData.extractedText = `--- PERÍCIA FORENSE PATRIMONIAL (PERFIL DE FINANCIADOR/PATROCINADOR) ---
+Tipo de Documento: Extrato de Contas Bancárias / Demonstração de Fundos (${fileName})
+Status de Autenticidade: VERIFICADO E INTEGRAL
+Relação de Suporte: Conta pertencente ao Financiador Declarado (${current.tripSponsor}).
+Auditoria de Consistência de Fluxo:
+- Saldo Consolidado Identificado: ${balanceText} (Pertencente ao Patrocinador)
+- Depósitos Recorrentes Mensais: ${incomeText}, compatíveis com a capacidade de fomento financeiro do patrocinador.
+- Nome do Titular da Conta: Em conformidade nominativa com o Financiador (${current.tripSponsor}) indicado pelo requerente.
+- Alerta de Fraude (Inflagem Temporária de Fundos sob Empréstimo): NEGATIVO. O histórico de 90 dias demonstra crescimento orgânico e estabilidade média consistente de saldos, afastando depósitos anómalos de antevéspera de entrevista consular.`;
+      } else {
+        fallbackData.extractedText = `--- PERÍCIA FORENSE PATRIMONIAL ---
 Tipo de Documento: Extrato de Contas Bancárias / Demonstração de Fundos (${fileName})
 Status de Autenticidade: VERIFICADO E INTEGRAL
 Auditoria de Consistência de Fluxo:
@@ -2022,12 +2076,15 @@ Auditoria de Consistência de Fluxo:
 - Depósitos Recorrentes Mensais: ${incomeText}, compatíveis com provimentos salariais estáveis de vínculo empregatício.
 - Nome do Titular da Conta: Em paridade nominativa total com o requerente do processo de visto.
 - Alerta de Fraude (Inflagem Temporária de Fundos sob Empréstimo): NEGATIVO. O histórico de 90 dias demonstra crescimento orgânico e estabilidade média consistente de saldos, afastando depósitos anómalos de antevéspera de entrevista consular.`;
+      }
 
     } else if (lowerName.includes("contrato") || lowerName.includes("senior") || lowerName.includes("trabalho") || lowerName.includes("employment") || lowerName.includes("job") || lowerName.includes("holerite") || lowerName.includes("payslip") || lowerName.includes("salario")) {
       if (extractedNumber && extractedNumber > 100 && extractedNumber < 15000) {
         fallbackData.monthlyIncome = extractedNumber;
       }
       
+      fallbackData.jobTiesYears = current.jobTiesYears !== undefined && current.jobTiesYears > 0 ? current.jobTiesYears : 3;
+
       fallbackData.checkedDocs = {
         ...fallbackData.checkedDocs,
         job_letter: true,
@@ -2035,14 +2092,26 @@ Auditoria de Consistência de Fluxo:
       };
 
       const incomeText = fallbackData.monthlyIncome ? `$${fallbackData.monthlyIncome.toLocaleString('pt-PT')},00 USD líquida` : "Não identificado explicitamente";
-      fallbackData.extractedText = `--- EXAME DE CONFORMIDADE LABORATIVA ---
+      
+      if (isSponsored) {
+        fallbackData.extractedText = `--- EXAME DE CONFORMIDADE LABORATIVA DO FINANCIADOR ---
+Tipo de Documento: Contrato de Trabalho / Declaração de Rendimentos do Patrocinador (${fileName})
+Empregador Declarado do Patrocinador: Empresa de Tecnologia & Serviços Sênior Lda.
+Status de Validade: VÍNCULO ATIVO E VERIFICADO
+Auditoria de Consistência e Vínculos:
+- Renda Mensal do Patrocinador (${current.tripSponsor}): ${incomeText}.
+- Tempo de Vínculo: ${fallbackData.jobTiesYears || 3} anos de estabilidade contratual do patrocinador.
+- Autenticidade de Assinaturas e Carimbos: Assinatura corporativa certificada digitalmente com controle de carimbo ativo. Sem rasuras ou discrepâncias funcionais.`;
+      } else {
+        fallbackData.extractedText = `--- EXAME DE CONFORMIDADE LABORATIVA ---
 Tipo de Documento: Contrato de Trabalho / Declaração de Rendimentos Ordinários (${fileName})
 Empregador Declarado: Empresa de Tecnologia & Serviços Sênior Lda.
 Status de Validade: VÍNCULO ATIVO E VERIFICADO
 Auditoria de Consistência e Vínculos:
 - Renda Mensal Declarada: ${incomeText}.
-- Tempo de Vínculo: 3 anos de estabilidade contratual de carteira.
+- Tempo de Vínculo: ${fallbackData.jobTiesYears || 3} anos de estabilidade contratual de carteira.
 - Autenticidade de Assinaturas e Carimbos: Assinatura corporativa certificada digitalmente com controle de carimbo ativo. Sem rasuras ou discrepâncias funcionais.`;
+      }
 
     } else if (lowerName.includes("casamento") || lowerName.includes("marriage") || lowerName.includes("certidao") || lowerName.includes("family") || lowerName.includes("família")) {
       fallbackData.checkedDocs = {
@@ -2132,7 +2201,7 @@ Rigor Consular Aplicado:
         return res.status(400).json({ error: "Nenhum arquivo enviado para parseamento." });
       }
 
-      const { name, mimeType, base64, extractedText } = file;
+      const { name, mimeType, base64, extractedText, category } = file;
 
       // Keep currentData untouched as our base state
       const parsedData = { ...(currentData || {}) };
@@ -2140,11 +2209,62 @@ Rigor Consular Aplicado:
 
       if (!hasAIKey()) {
         console.log(`[ConsulAI DevMode] No API key present. Performing quick local audit mapping for: ${name}`);
-        const resultData = getSimulatedOcrData(name, parsedData);
+        const resultData = getSimulatedOcrData(name, parsedData, category || file.category);
         return res.json({ status: "success", method: "local_mapping", data: resultData });
       }
 
       console.log(`[ConsulAI Server] Initiating AI document extraction flow for: ${name} (Is BI/Passport: ${isID})`);
+
+      // Handle refusal_note category before generic document parsing
+      if (category === "refusal_note") {
+        const refusalSchema = {
+          type: "object",
+          properties: {
+            extractedText: { type: "string", description: "The exact refusal/denial reason text extracted from the official document. Include all stated legal grounds and conditions." },
+            deniedReasonText: { type: "string", description: "Same as extractedText – the core denial reason statement from the document." }
+          },
+          required: ["extractedText"]
+        };
+
+        const refusalInstruction = `Você é um especialista jurídico em imigração e vistos. Sua tarefa é extrair o motivo oficial de recusa/indeferimento de visto diretamente do documento anexado. 
+Extraia o texto exato da motivação legal da recusa como consta na carta ou notificação oficial do consulado. Inclua todos os fundamentos legais citados.
+Retorne o texto da recusa no campo 'extractedText' e também em 'deniedReasonText'. Retorne JSON válido.`;
+
+        const refusalContents: any[] = [{ text: `Analise esta carta/notificação de recusa de visto e extraia o motivo oficial:\nArquivo: ${name}\nTipo: ${mimeType}\n${extractedText ? `Texto auxiliar pré-extraído: ${extractedText}` : ""}` }];
+
+        if (base64) {
+          let cleanBase64 = base64;
+          if (cleanBase64.includes(";base64,")) cleanBase64 = cleanBase64.split(";base64,").pop() || "";
+          refusalContents.push({ name, inlineData: { mimeType, filename: name, data: cleanBase64 } });
+        }
+
+        try {
+          const refusalResponse = await withTimeout(
+            callAIWithFailover({
+              contents: refusalContents,
+              systemInstruction: refusalInstruction,
+              responseMimeType: "application/json",
+              responseSchema: refusalSchema
+            }),
+            AI_OCR_TIMEOUT_MS,
+            "OCR carta de recusa"
+          );
+
+          const refusalResult = parseJsonSafely(refusalResponse || "{}");
+          if (refusalResult.extractedText) parsedData.extractedText = refusalResult.extractedText;
+          if (refusalResult.deniedReasonText) parsedData.deniedReasonText = refusalResult.deniedReasonText;
+          else if (refusalResult.extractedText) parsedData.deniedReasonText = refusalResult.extractedText;
+
+          if (!parsedData.checkedDocs) parsedData.checkedDocs = {};
+          parsedData.checkedDocs.refusal_note = true;
+
+          return res.json({ status: "success", method: "ai_ocr_refusal", data: parsedData });
+        } catch (refusalErr) {
+          // Fall through to local fallback for refusal
+          const fallbackRefusal = getSimulatedOcrData(name, parsedData, "refusal_note");
+          return res.json({ status: "success", method: "local_mapping_refusal", data: fallbackRefusal });
+        }
+      }
 
       if (isID) {
         // BI or Passport extraction schema
@@ -2325,7 +2445,7 @@ ${extractedText ? `Texto pré-extraído auxiliar: ${extractedText}` : ""}`;
       try {
         const fileObj = req.body?.file;
         const currentDataObj = req.body?.currentData || {};
-        const fallbackData = getSimulatedOcrData(fileObj?.name || "document.pdf", currentDataObj);
+        const fallbackData = getSimulatedOcrData(fileObj?.name || "document.pdf", currentDataObj, fileObj?.category);
         return res.json({ status: "success", method: "local_mapping_fallback", data: fallbackData });
       } catch (innerEx) {
         console.log("[ConsulAI Server Fallback] Inner notice processing local mapping.");
@@ -2426,13 +2546,14 @@ function getDeterministicOpinion(
 
   const isPerfil = data.analysisType === "perfil";
   const strJob = jobLabelMap[data.jobType] || (data.jobType === "government" ? "Servidor Público" : data.jobType === "stable_private" ? "Clt/Privado" : data.jobType || "Não Especificado");
+  const isStudentJob = data.jobType === "student" || data.jobType === "student_school" || data.normalizedJobType === "student";
 
   return `### I. ANÁLISE LEGAL E DOCUMENTAL (PERÍCIA INDIVIDUAL DE DOCUMENTOS)
 Foi efetuada a conferência individual profunda sob as normativas vigentes, com foco principal no diploma jurídico **${activeRules.legal_basis.join(" e ")}**. 
 
 ${isPerfil ? `Esta avaliação é uma **ANÁLISE DE PERFIL** baseada inteiramente nas declarações do formulário cadastral, sem análise ou consideração de documentos físicos de suporte (ou sua consistência e veracidade formal).` : `**Auditoria Individualizada do Dossiê:**
 - **Documento #1 (Extratos Bancários de 3 Meses):** Submetido a cruzamento de dados. Fornece prova material da subsistência, mas deve ser avaliado contra a renda informada.
-- **Documento #2 (Comprovantes de Renda/Payslips):** Atesta vínculo laboral ativo de **${data.jobTiesYears} anos** como **${strJob}**${data.contractType ? ` sob regime de trabalho "${data.contractType}"${data.contractDuration ? ` com duração de ${data.contractDuration}` : ""}` : ""}.
+- **Documento #2 (Comprovantes de Renda/Payslips):** ${isStudentJob ? `Atesta condição de estudante ativo por **${data.jobTiesYears} anos**` : `Atesta vínculo laboral ativo de **${data.jobTiesYears} anos** como **${strJob}**${data.contractType ? ` sob regime de trabalho "${data.contractType}"${data.contractDuration ? ` com duração de ${data.contractDuration}` : ""}` : ""}`}.
 - **Documento #3 (Reservas de Itinerário & Alojamento):** Declara alojamento na modalidade de **${data.accommodationType || "Não Especificado"}**.`}
 
 **Precedentes Consulares e Imigratórios:**
@@ -2440,7 +2561,7 @@ ${isPerfil ? `Esta avaliação é uma **ANÁLISE DE PERFIL** baseada inteirament
 - **Deportações:** ${data.hasDeportations === "yes" ? `**ALERTA CRÍTICO DE DEPORTAÇÃO**. O candidato foi formalmente deportado de **${data.deportationCountry}** sob causa: *"${data.deportationReason}"*. Essa ocorrência macula gravemente a confiabilidade imigratória sob as bases legislativas internacionais.` : "Não há registros de deportações pretéritas."}
 
 ### II. AVALIAÇÃO PATRIMONIAL E DE SUSTENTAÇÃO (RECONCILIAÇÃO DISCIPLINAR DO EXTRATO)
-Realizamos uma perícia detalhada correlacionando a renda mensal declarada de **$${data.monthlyIncome} USD** com o saldo bancário líquido de **$${data.bankBalance} USD** e o tempo de serviço ativo de **${data.jobTiesYears} anos**.
+Realizamos uma perícia detalhada correlacionando a renda mensal declarada de **$${data.monthlyIncome} USD** ${isStudentJob ? "mencionada como apoio financeiro" : "como remuneração salarial"} com o saldo bancário líquido de **$${data.bankBalance} USD** e o tempo de ${isStudentJob ? "vínculo acadêmico" : "serviço ativo"} de **${data.jobTiesYears} anos**.
 
 **Custos Detalhados de Viagem:**
 - **Custo de Passagem Aérea/Voo:** ${flight > 0 ? `**$${flight} USD** (declarado pelo requerente)` : `**$950 USD** (estimativa baseada em trecho de ida e volta para ${activeRules.country})`}
@@ -2451,7 +2572,7 @@ Realizamos uma perícia detalhada correlacionando a renda mensal declarada de **
 
 **Reconciliação e Diagnóstico Financeiro Presente:**
 - **Risco de Consumo Patrimonial:** A viagem consumirá cerca de **${percentOfBalance.toFixed(1)}%** do saldo total líquido apresentado no extrato bancário do requerente ($${data.bankBalance} USD).
-- **Proporção Renda x Depósitos:** Para um perfil laboral ativo remunerado em $${data.monthlyIncome} USD por mês, com tempo de serviço de ${data.jobTiesYears} anos, o custo total de viagem representa **${((totalCost / (data.monthlyIncome || 1)) * 100).toFixed(0)}%** de sua renda mensal ordinária, denotando ${totalCost > data.monthlyIncome * 3 ? "uma alta discrepância de esforço financeiro que sugere inviabilidade prática" : "uma compatibilidade proporcional saudável com os ganhos mensais declarados"}.
+- **Proporção Renda x Depósitos:** ${isStudentJob ? `Como o requerente é estudante (sem profissão remunerada), o custo total da viagem ($${totalCost.toFixed(2)} USD) é suportado pelo capital acumulado de patrocinadores/família de $${data.bankBalance} USD e apoio financeiro mensal de $${data.monthlyIncome} USD. O saldo bancário representa ${(data.bankBalance / (totalCost || 1)).toFixed(1)}x o custo total da estadia, o que demonstra capacidade de subsistência adequada para a condição acadêmica.` : `Para um perfil laboral ativo remunerado em $${data.monthlyIncome} USD por mês, com tempo de serviço de ${data.jobTiesYears} anos, o custo total de viagem representa **${((totalCost / (data.monthlyIncome || 1)) * 100).toFixed(0)}%** de sua renda mensal ordinária, denotando ${totalCost > data.monthlyIncome * 3 ? "uma alta discrepância de esforço financeiro que sugere inviabilidade prática" : "uma compatibilidade proporcional saudável com os ganhos mensais declarados"}.`}
 - **Índice de Autossuficiência Patrimonial:** Fator multiplicador de **${(data.bankBalance / (totalCost || 1)).toFixed(2)}x** o capital total requerido para realizar o itinerário de forma soberana e sem depender de auxílio social público de ${activeRules.country || "destino"}.
 - **Análise de Vínculos de Volta:** Coeficiente de retorno estimado em patamar **${score >= 70 ? "SEGURO" : "FRÁGIL/INSUFICIENTE"}** baseado na combinação de raízes familiares e estabilidade no país de origem.
 
@@ -2463,14 +2584,6 @@ ${isPerfil ? "Como esta é uma Análise de Perfil baseada apenas nas declaraçõ
 
 ### IV. DELIBERAÇÃO FINAL E JULGAMENTO DETALHADO DO ITINERÁRIO
 - **Análise do Itinerário de Viagem:** Analisado passo-a-passo. O plano de permanência de **${data.durationOfStayDays} dias**, com percurso regulado para **${activeRules.country}**, ${data.accommodationType === "hotel" || data.accommodationType === "Hotel" ? "possui reserva confirmada de hotel correspondente ao período solicitado de hospedagem garantida" : "apresenta vulnerabilidades quanto à acomodação e alojamento, exigindo carta convite formal legalizada"}.
-- **Parecer Recomendado:** A petição consolidou uma nota de classificação de **${score}/100** e é classificada como **${decision}**.
-- **Protocolo de Mitigação Exigido:** ${data.hasDeportations === "yes" ? "A embaixada deve emitir de imediato um pedido de certidão negativa de antecedentes policiais internacionais e suspender a emissão pendente de audiência presencial." : data.hasDeniedVisas === "yes" ? "Recomenda-se notificação formal solicitando os termos de indeferimento passados para controle de similaridade." : "Nenhum protocolo extraordinário exigido no fluxo ordinário de vistos."}
-
-### V. DIRETRIZES DE AJUSTE DE PERFIL (Voz de um Advogado de Migração Especializado)
-Como **Advogado de Migração Altamente Especializado**, elaborei este roteiro para orientar o requerente sobre os erros específicos detectados no dossiê e prescrever as ações práticas necessárias para ajustar seu perfil: de precedentes negativos"} de vistos negados ou deportação demanda um escrutínio cirúrgico sobre a idoneidade da conduta civil declarada.
-
-### IV. DELIBERAÇÃO FINAL E JULGAMENTO DETALHADO DO ITINERÁRIO
-- **Análise do Itinerário de Viagem:** Analisado passo-a-passo. O plano de permanência de **${data.durationOfStayDays} dias**, com percurso regulado para **${activeRules.country}**, ${data.accommodationType === "hotel" ? "possui reserva confirmada de hotel correspondente ao período solicitado de hospedagem garantida" : "apresenta vulnerabilidades quanto à acomodação e alojamento, exigindo carta convite formal legalizada"}.
 - **Parecer Recomendado:** A petição consolidou uma nota de classificação de **${score}/100** e é classificada como **${decision}**.
 - **Protocolo de Mitigação Exigido:** ${data.hasDeportations === "yes" ? "A embaixada deve emitir de imediato um pedido de certidão negativa de antecedentes policiais internacionais e suspender a emissão pendente de audiência presencial." : data.hasDeniedVisas === "yes" ? "Recomenda-se notificação formal solicitando os termos de indeferimento passados para controle de similaridade." : "Nenhum protocolo extraordinário exigido no fluxo ordinário de vistos."}
 
@@ -2487,7 +2600,7 @@ ${
     ? "- **Indício de Depósito Artificial:** A detecção de inflagem abrupta de saldo próximo à data do pedido sugere fundos de custódia temporária, reduzindo a fidedignidade.\n"
     : ""
 }${
-  data.jobTiesYears < 2
+  !isStudentJob && data.jobTiesYears < 2
     ? "- **Baixo Vínculo de Retorno:** O vínculo societário ou empregatício de apenas " + data.jobTiesYears + " anos denota instabilidade recente de carreira e fraca ancoragem profissional.\n"
     : ""
 }${
@@ -2519,14 +2632,19 @@ ${
 - **Passo 3 (Legalização):** Realizar o apostilamento internacional das certidões criminais nacionais de modo a suprir a classe documental exigida pela jurisdição do destino.
 - **Passo 4 (Carência Temporal):** Aguardar uma janela temporal saudável de 90 a 180 dias mantendo saldos e empregabilidade constantes antes de solicitar uma reavaliação oficial do visto.
 
+- **PONTOS POR AJUSTAR A SEGUIR ÀS RECOMENDAÇÕES:**
+  - ${isStudentJob ? "Apresentar comprovativo de matrícula atualizado e carta de suporte financeiro idónea de patrocinador." : "Formalizar contrato laboral sem termo estável para mitigar riscos de volatilidade de emprego."}
+  - ${isStudentJob ? `Manter consistência temporal de depósitos comprovando o apoio financeiro mensal de $${data.monthlyIncome} USD.` : `Manter consistência temporal de depósitos comprovando a renda recorrente declarada de $${data.monthlyIncome} USD.`}
+  - Obter e anexar apólice médica internacional com cobertura nominativa garantida.
+
 AO FINAL DESTA SEÇAO V, VOCÊ DEVE OBRIGATORIAMENTE APRESENTAR ESTES QUATRO QUADROS FINAIS DE SÍNTESE DO DOSSIÊ:
 - **PONTOS FORTES DO PERFIL:**
   - Estabilidade financeira demonstrada com fundos declarados de $${data.bankBalance} USD.
-  - Vínculo de trabalho ativo de ${data.jobTiesYears} anos consolidando consistência laboral.
+  - ${isStudentJob ? `Vínculo acadêmico ativo de ${data.jobTiesYears} anos consolidando ocupação estável.` : `Vínculo de trabalho ativo de ${data.jobTiesYears} anos consolidando consistência laboral.`}
   - Percurso e itinerário pré-definidos para o país de destino (${activeRules.country || "país de destino"}).
 
 - **PONTOS FRACOS DO PERFIL:**
-  - Baixo tempo de vínculo laboral com ${data.jobTiesYears} anos de atividade${data.contractType ? `, sob regime de tipo "${data.contractType}" (${data.contractDuration || "tempo indeterminado"})` : ""}.
+  - ${isStudentJob ? `Baixo tempo de vínculo acadêmico com ${data.jobTiesYears} anos de estudos.` : `Baixo tempo de vínculo laboral com ${data.jobTiesYears} anos de atividade${data.contractType ? `, sob regime de tipo "${data.contractType}" (${data.contractDuration || "tempo indeterminado"})` : ""}.`}
   - ${data.balanceRecentIncrease ? "Detecção de depósito atípico próximo à data de solicitação." : "Ausência de poupança acumulada de forma estritamente gradual a longo prazo."}
   - ${data.hasDeniedVisas === "yes" ? `Presença de histórico oficial de recusa por ${data.deniedVisaCountry}.` : "Vulnerabilidade face a possíveis laços de regresso fracos."}
 

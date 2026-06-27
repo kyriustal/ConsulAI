@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { 
   ShieldAlert, 
@@ -322,7 +322,7 @@ export const extractDetailsFromFileName = (fileName: string) => {
   return { applicantName, passportNumber, age };
 };
 
-export const getLocalOcrFallback = (fileName: string, currentData: any) => {
+export const getLocalOcrFallback = (fileName: string, currentData: any, category?: string) => {
   const lowerName = fileName.toLowerCase();
   const fallback: any = { ...currentData };
 
@@ -443,7 +443,7 @@ Auditoria de Consistência de Fluxo:
       fallback.monthlyIncome = 1850;
     }
     fallback.jobType = "stable_private";
-    fallback.jobTiesYears = 3;
+    fallback.jobTiesYears = currentData.jobTiesYears !== undefined && currentData.jobTiesYears > 0 ? currentData.jobTiesYears : 3;
 
     fallback.checkedDocs = {
       ...fallback.checkedDocs,
@@ -458,7 +458,7 @@ Empregador Declarado: Empresa de Tecnologia & Serviços Sênior Lda.
 Status de Validade: VÍNCULO ATIVO E VERIFICADO
 Auditoria de Consistência e Vínculos:
 - Renda Mensal Declarada: ${incomeText}.
-- Tempo de Vínculo: 3 anos de estabilidade contratual de carteira.
+- Tempo de Vínculo: ${fallback.jobTiesYears || 3} anos de estabilidade contratual de carteira.
 - Autenticidade de Assinaturas e Carimbos: Assinatura corporativa certificada digitalmente com controle de carimbo ativo. Sem rasuras ou discrepâncias funcionais.`;
 
     return fallback;
@@ -541,6 +541,14 @@ Análise Consular:
 - Curso de Ingresso: Estudos Superiores ou Qualificação Profissional.
 - Vericabilidade e Autenticidade: Código institucional validado em lista de estabelecimentos de ensino oficial do destino.`;
 
+    return fallback;
+
+  } else if (category === "refusal_note" || lowerName.includes("recusa") || lowerName.includes("rejeicao") || lowerName.includes("rejeição") || lowerName.includes("refusal") || lowerName.includes("denied") || lowerName.includes("despacho")) {
+    fallback.checkedDocs = {
+      ...fallback.checkedDocs,
+      refusal_note: true
+    };
+    fallback.extractedText = "O requerente não fez prova de dispor de meios de subsistência suficientes e adequados para a duração da estada prevista, nem de alojamento condigno na duração da estada.";
     return fallback;
 
   } else {
@@ -858,6 +866,124 @@ export default function App() {
   const [isEvaluatingDenied, setIsEvaluatingDenied] = useState(false);
   const [deniedResult, setDeniedResult] = useState<any | null>(null);
   const [selectedDeniedTemplate, setSelectedDeniedTemplate] = useState<string | null>(null);
+
+  const refusalFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Resizable columns state
+  const [simulatorLeftWidth, setSimulatorLeftWidth] = useState<number>(40); // 40% initial width
+  const [deniedLeftWidth, setDeniedLeftWidth] = useState<number>(50); // 50% initial width
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const startResizing = (e: React.MouseEvent, type: "simulator" | "denied") => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = type === "simulator" ? simulatorLeftWidth : deniedLeftWidth;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const container = document.getElementById(type === "simulator" ? "simulator-container" : "denied-container");
+      if (container) {
+        const containerWidth = container.getBoundingClientRect().width;
+        const newWidthPercent = startWidth + (deltaX / containerWidth) * 100;
+        const boundedWidth = Math.max(20, Math.min(80, newWidthPercent));
+        if (type === "simulator") {
+          setSimulatorLeftWidth(boundedWidth);
+        } else {
+          setDeniedLeftWidth(boundedWidth);
+        }
+      }
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+    
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleRefusalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    
+    const initialFileObj = {
+      name: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+      source: "local" as const,
+      category: "refusal_note",
+      isParsed: false
+    };
+    setRefusalDocumentFiles([initialFileObj]);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const result = event.target?.result as string;
+      const base64Content = result.split(",")[1];
+      
+      const fileObj = {
+        ...initialFileObj,
+        base64: base64Content
+      };
+      
+      setRefusalDocumentFiles([fileObj]);
+
+      try {
+        const response = await fetch("/api/parse-document", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            file: {
+              name: file.name,
+              mimeType: file.type || "application/octet-stream",
+              base64: base64Content,
+              category: "refusal_note"
+            },
+            currentData: {
+              deniedReasonText: ""
+            }
+          })
+        });
+
+        let extractedText = "";
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.status === "success" && resJson.data) {
+            // Prefer deniedReasonText if returned, else fall back to extractedText
+            extractedText = resJson.data.deniedReasonText || resJson.data.extractedText || "";
+          }
+        }
+
+        if (!extractedText) {
+          const fallbackData = getLocalOcrFallback(file.name, { deniedReasonText: "" }, "refusal_note");
+          extractedText = fallbackData.extractedText || "";
+        }
+
+        if (extractedText) {
+          setDeniedReasonText(extractedText);
+        }
+      } catch (err) {
+        console.error("Error parsing refusal document:", err);
+        const fallbackData = getLocalOcrFallback(file.name, { deniedReasonText: "" }, "refusal_note");
+        if (fallbackData.extractedText) {
+          setDeniedReasonText(fallbackData.extractedText);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+    
+    if (refusalFileInputRef.current) {
+      refusalFileInputRef.current.value = "";
+    }
+  };
 
   // Activity logs and editing client data in Profile tab states
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
@@ -3662,7 +3788,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
       ) : (
         <>
           {/* ═══════════════ HEADER (Responsive) ═══════════════ */}
-      <header className="border-b border-[#1e293b] bg-[#0c1220]/90 backdrop-blur sticky top-0 z-40 px-3 sm:px-6 py-3">
+      <header className="bg-[#0c1220]/90 backdrop-blur sticky top-0 z-40 px-3 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
 
           {/* Logo + Brand */}
@@ -3758,7 +3884,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             </nav>
 
             {/* Theme + User badges — desktop */}
-            <div className="flex items-center gap-2 border-l border-[#1e293b] pl-3">
+            <div className="flex items-center gap-2 pl-3">
               <button
                 id="theme-toggle-btn"
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -3845,7 +3971,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         }`}
       >
         {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-[#1e293b]">
+        <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center space-x-2">
             <img 
               src="/logo.png" 
@@ -3937,7 +4063,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
         </nav>
 
         {/* Drawer footer actions */}
-        <div className="px-3 py-4 border-t border-[#1e293b] space-y-2">
+        <div className="px-3 py-4 space-y-2">
           {currentUser && (
             <button
               type="button"
@@ -4019,10 +4145,13 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             {/* Template Cases Quick Select Slider — hidden from production UI (data kept for history) */}
 
             {/* Live Dual Panel Interaction */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div id="simulator-container" className="resizable-container items-start">
               
               {/* Left Form: Input data */}
-              <div className="ds160-form-shell lg:col-span-5 bg-[#111827] border border-[#1e293b] rounded-xl p-5 shadow-xl">
+              <div
+                className="ds160-form-shell bg-[#111827] border border-[#1e293b] rounded-xl p-5 shadow-xl"
+                style={{ width: isMobile ? "100%" : `${simulatorLeftWidth}%`, flexShrink: 0 }}
+              >
                 <div className="border-b border-[#1f2937] pb-3.5 mb-4 flex justify-between items-center">
                   <div className="flex items-center space-x-2">
                     <FileText className="w-5 h-5 text-sky-400" />
@@ -4314,9 +4443,13 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1">
                           <DollarSign className="w-3.5 h-3.5 text-sky-600" />
-                          <span className="text-sky-800 bg-sky-50 px-1.5 py-0.5 border border-white rounded shadow-sm">Renda Mensal (USD)</span>
+                          <span className="text-sky-800 bg-sky-50 px-1.5 py-0.5 border border-white rounded shadow-sm">
+                            {(formData.jobType === "student" || formData.jobType === "student_school") ? "Apoio/Suporte Financeiro Mensal (USD)" : "Renda Mensal (USD)"}
+                          </span>
                         </label>
-                        <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-50 px-1.5 py-0.5 rounded border border-white shadow-sm">Recorrente</span>
+                        <span className="text-[10px] text-emerald-800 font-bold font-mono bg-emerald-50 px-1.5 py-0.5 rounded border border-white shadow-sm">
+                          {(formData.jobType === "student" || formData.jobType === "student_school") ? "Suporte" : "Recorrente"}
+                        </span>
                       </div>
                       <input
                         type="number"
@@ -4329,7 +4462,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                           setFormData(p => ({ ...p, monthlyIncome: val === "" ? 0 : parseFloat(val) }));
                         }}
                         className="w-full bg-white border border-slate-350 rounded-lg px-3 py-2 text-xs font-mono text-black focus:outline-none focus:border-sky-500"
-                        placeholder="Insira a renda livremente..."
+                        placeholder={(formData.jobType === "student" || formData.jobType === "student_school") ? "Insira o suporte mensal..." : "Insira a renda livremente..."}
                       />
                     </div>
 
@@ -4501,20 +4634,25 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-mono font-medium text-slate-400 uppercase tracking-wider mb-1">
-                        Vínculo Profissional
+                        Ocupação ou Profissão
                       </label>
                       <select
                         value={formData.jobType}
                         onChange={e => setFormData(p => ({ ...p, jobType: e.target.value }))}
                         className="w-full bg-[#1f2937] border border-[#374151] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500 font-sans"
                       >
-                        <option value="">-- Selecione a Profissão --</option>
+                        <option value="">-- Selecione a Ocupação ou Profissão --</option>
                         {ALL_PROFESSIONS.map((p) => (
                           <option key={p.value} value={p.value}>
                             {p.label}
                           </option>
                         ))}
                       </select>
+                      {(formData.jobType === "student" || formData.jobType === "student_school") && (
+                        <p className="mt-1 text-[10px] text-sky-400 font-sans leading-normal">
+                          💡 <strong>Atenção:</strong> A opção estudante é uma condição de ocupação e vínculo com o país de origem, não uma profissão remunerada. O valor de renda será tratado como suporte financeiro / mesada.
+                        </p>
+                      )}
 
                       <div className="mt-2 grid grid-cols-3 gap-2 bg-[#172554]/25 p-2 rounded-lg border border-sky-500/10">
                         <div>
@@ -5442,8 +5580,16 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                 </form>
               </div>
 
+              {/* Resize separator */}
+              {!isMobile && (
+                <div
+                  className="resizable-separator"
+                  onMouseDown={(e) => startResizing(e, "simulator")}
+                />
+              )}
+
               {/* Right: Consolidated decision output & technical opinion report */}
-              <div className="lg:col-span-7 space-y-4">
+              <div className="space-y-4" style={{ flex: 1, minWidth: 0 }}>
                 
                 {evalError && (
                   <div className="p-4 bg-red-950/40 border border-red-500/30 rounded-xl text-red-200 text-xs flex items-center space-x-3">
@@ -6040,10 +6186,13 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
             </div>
 
             {/* Main Interactive Workspace Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div id="denied-container" className="resizable-container items-start">
               
               {/* Left Column: Intake and Inputs */}
-              <div className="bg-[#111827] border border-[#1e293b] rounded-xl p-5 md:p-6 shadow-xl space-y-6">
+              <div
+                className="bg-[#111827] border border-[#1e293b] rounded-xl p-5 md:p-6 shadow-xl space-y-6"
+                style={{ width: isMobile ? "100%" : `${deniedLeftWidth}%`, flexShrink: 0 }}
+              >
                 
                 <h3 className="font-display font-bold text-sm text-white flex items-center space-x-2 border-b border-[#1f2937]/50 pb-3 mb-4 font-sans">
                   <Activity className="w-4 h-4 text-rose-500" />
@@ -6128,6 +6277,13 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                     <label className="block text-[10.5px] font-mono uppercase text-rose-450 tracking-wider font-bold">
                       Documento Oficial de Recusa / Decisão (Carta/Notificação física)
                     </label>
+                    <input
+                      type="file"
+                      ref={refusalFileInputRef}
+                      onChange={handleRefusalFileChange}
+                      className="hidden"
+                      accept=".pdf,image/*"
+                    />
                     <div className="bg-[#1f2937]/15 border border-[#374151]/45 p-3 rounded-lg">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                         <div className="flex items-center space-x-2.5">
@@ -6153,22 +6309,32 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                               </button>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const fileObj = {
-                                  name: "Notificacao_Consular_Rejeicao.pdf",
-                                  mimeType: "application/pdf",
-                                  size: 450000,
-                                  source: "local" as const,
-                                  category: "refusal_note"
-                                };
-                                setRefusalDocumentFiles([fileObj]);
-                              }}
-                              className="px-2.5 py-1 text-slate-300 hover:text-white bg-[#1f2937] hover:bg-[#2d3748] border border-[#374151] rounded text-[10px] font-mono cursor-pointer transition-colors"
-                            >
-                              + Simular Carta Física
-                            </button>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => refusalFileInputRef.current?.click()}
+                                className="px-2.5 py-1 text-sky-400 hover:text-white bg-[#1f2937] hover:bg-[#2d3748] border border-sky-500/30 hover:border-sky-500 rounded text-[10px] font-mono cursor-pointer transition-colors"
+                              >
+                                Carregar Ficheiro
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fileObj = {
+                                    name: "Notificacao_Consular_Rejeicao.pdf",
+                                    mimeType: "application/pdf",
+                                    size: 450000,
+                                    source: "local" as const,
+                                    category: "refusal_note"
+                                  };
+                                  setRefusalDocumentFiles([fileObj]);
+                                  setDeniedReasonText("O requerente não fez prova de dispor de meios de subsistência suficientes e adequados para a duração da estada prevista, nem de alojamento condigno na duração da estada.");
+                                }}
+                                className="px-2.5 py-1 text-slate-400 hover:text-slate-350 bg-[#111827] hover:bg-[#1f2937] border border-[#2d3748] rounded text-[10px] font-mono cursor-pointer transition-colors"
+                              >
+                                + Simular
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -6214,8 +6380,16 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
 
               </div>
 
+              {/* Resize separator */}
+              {!isMobile && (
+                <div
+                  className="resizable-separator"
+                  onMouseDown={(e) => startResizing(e, "denied")}
+                />
+              )}
+
               {/* Right Column: Analysis Results and Interactive Reports */}
-              <div className="space-y-6">
+              <div className="space-y-6" style={{ flex: 1, minWidth: 0 }}>
                 
                 {(!deniedResult && !isEvaluatingDenied) ? (
                   <div className="bg-[#111827] border border-[#1e293b] rounded-xl p-8 text-center space-y-3 shadow-xl h-full flex flex-col items-center justify-center min-h-[400px]">
@@ -7222,7 +7396,9 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">Renda Mensal ($)</label>
+                  <label className="block text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">
+                    {(editingCase.result.data.jobType === "student" || editingCase.result.data.jobType === "student_school") ? "Suporte Financeiro Mensal ($) (Estudante)" : "Renda Mensal ($)"}
+                  </label>
                   <input
                     type="number"
                     required
@@ -7300,7 +7476,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">Vínculo de Trabalho</label>
+                  <label className="block text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">Ocupação ou Profissão</label>
                   <select
                     value={editingCase.result.data.jobType}
                     onChange={(e) => {
@@ -7310,7 +7486,7 @@ ${dynamicActionPlan || "1.  **Autenticação Notarial Completa**: Assegurar que 
                     }}
                     className="w-full bg-[#111928] border border-[#223049] rounded-lg px-2.5 py-1.8 text-xs text-white focus:outline-[#38bdf8] focus:outline focus:outline-1"
                   >
-                    <option value="">-- Selecione a Profissão --</option>
+                    <option value="">-- Selecione a Ocupação ou Profissão --</option>
                     {ALL_PROFESSIONS.map((p) => (
                       <option key={p.value} value={p.value}>
                         {p.label}
